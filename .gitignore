@@ -44,4 +44,24 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .env
+.env.*
+!.env.example
 .vscode/
+
+# Private signing material and credentials
+**/key.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
+
+# Generated Gradle/Kotlin output
+**/.gradle/
+**/.kotlin/
+android/build/
+
+# Local IDE and OS metadata
+*.iml
+.DS_Store
+Thumbs.db
