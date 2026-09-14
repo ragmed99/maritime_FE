@@ -1,0 +1,42 @@
+# Maritime Frontend
+
+Flutter foundation targeting Android, iOS, and Windows. French is the default
+locale; Arabic is supported with Flutter's automatic RTL directionality.
+
+## Environments
+
+Development defaults to Django at `http://127.0.0.1:8000`, so the Linux app can
+be started without compile-time arguments:
+
+```bash
+flutter run -d linux
+```
+
+The development URL can still be overridden when needed. Staging requires an
+explicit URL. Production defaults to the deployed Vultr HTTPS API:
+`https://maritime-api.cliniquedouane.com`.
+
+```bash
+flutter run --dart-define=DEV_API_URL=http://10.0.2.2:8000
+
+flutter build apk --dart-define=APP_ENV=staging \
+  --dart-define=STAGING_API_URL=https://staging.example.com/api/
+
+flutter build apk --release --dart-define=APP_ENV=production
+flutter build windows --release --dart-define=APP_ENV=production
+flutter build linux --release --dart-define=APP_ENV=production
+flutter build ios --release --dart-define=APP_ENV=production
+```
+
+`PRODUCTION_API_URL` remains available for controlled production overrides, but
+production validation requires an absolute HTTPS URL:
+
+```bash
+flutter build apk --release --dart-define=APP_ENV=production \
+  --dart-define=PRODUCTION_API_URL=https://maritime-api.cliniquedouane.com
+```
+
+Use `127.0.0.1` instead of Android emulator host `10.0.2.2` when running the
+Windows or Linux desktop client against local Django. Android emulators normally
+use `DEV_API_URL=http://10.0.2.2:8000`; physical devices need the development
+machine's LAN address.
