@@ -4,6 +4,7 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 import '../application/locale_controller.dart';
 import '../../administration/data/administration_repository.dart';
 import '../../administration/domain/administration_models.dart';
+import '../../../core/widgets/app_logo.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -43,6 +44,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        const Center(child: AppLogo(size: 120)),
+        const SizedBox(height: 12),
         Text(
           strings.settings,
           style: Theme.of(context).textTheme.headlineMedium,
@@ -89,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ListTile(
                         leading: const Icon(Icons.business_outlined),
                         title: Text(strings.companyName),
-                        subtitle: Text(config!.name),
+                        subtitle: Text(strings.appName),
                       ),
                       if (config!.phone.isNotEmpty)
                         ListTile(

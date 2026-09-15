@@ -1,4 +1,5 @@
 import '../../dashboard/domain/dashboard_models.dart';
+import '../../../core/models/account_position.dart';
 
 class ClientRecord {
   const ClientRecord({
@@ -61,10 +62,10 @@ class ClientTransactionRow {
 
 class ClientStatementData {
   const ClientStatementData({
-    required this.currentBalance,
+    required this.position,
     required this.transactions,
   });
-  final double currentBalance;
+  final AccountPosition position;
   final List<ClientTransactionRow> transactions;
 }
 

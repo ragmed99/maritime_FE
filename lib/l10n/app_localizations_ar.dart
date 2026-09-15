@@ -9,7 +9,7 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appName => 'الإدارة المالية البحرية';
+  String get appName => 'TAR FISHING';
 
   @override
   String get startupMessage => 'جارٍ تجهيز مساحة العمل البحرية…';
@@ -368,6 +368,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get date => 'التاريخ';
+
+  @override
+  String get theyOweUs => 'هو مدين لنا';
+
+  @override
+  String get weOweThem => 'نحن مدينون له';
 
   @override
   String get shipOptional => 'السفينة (اختياري)';

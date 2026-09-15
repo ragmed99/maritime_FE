@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/models/account_position.dart';
 import '../application/clients_controller.dart';
 import '../data/clients_repository.dart';
 import '../domain/client_models.dart';
@@ -244,7 +244,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   ClientFilters filters = const ClientFilters();
   bool loading = true;
   bool failed = false;
-  bool sharing = false;
   @override
   void initState() {
     super.initState();
@@ -325,7 +324,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                 ],
                               ),
                             ),
-                            _Balance(value: data!.currentBalance),
+                            _Balance(position: data!.position),
                           ],
                         ),
                       ),
@@ -349,18 +348,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                           onPressed: _filter,
                           icon: const Icon(Icons.filter_alt_outlined),
                           label: Text(s.filters),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: sharing ? null : _sharePdf,
-                          icon: sharing
-                              ? const SizedBox.square(
-                                  dimension: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.picture_as_pdf_outlined),
-                          label: Text(s.downloadSharePdf),
                         ),
                       ],
                     ),
@@ -421,69 +408,50 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
       }
     }
   }
-
-  Future<void> _sharePdf() async {
-    setState(() => sharing = true);
-    final title = AppLocalizations.of(context).clientStatement;
-    try {
-      final bytes = await widget.repository.statementPdf(
-        widget.client.id,
-        filters,
-      );
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [
-            XFile.fromData(
-              bytes,
-              mimeType: 'application/pdf',
-              name: 'client-statement.pdf',
-            ),
-          ],
-          title: title,
-        ),
-      );
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).pdfError)),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => sharing = false);
-    }
-  }
 }
 
 class _Balance extends StatelessWidget {
-  const _Balance({required this.value});
-  final double value;
+  const _Balance({required this.position});
+  final AccountPosition position;
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final color = value > 0
+    final color = position.theyOweUs > 0
         ? Colors.red.shade700
-        : value < 0
+        : position.weOweThem > 0
         ? Colors.green.shade700
         : Theme.of(context).colorScheme.onSurfaceVariant;
-    final label = value > 0
-        ? s.clientOwesUs
-        : value < 0
-        ? s.clientCredit
-        : s.balanced;
+    final locale = Localizations.localeOf(context).toLanguageTag();
     return SizedBox(
       width: 280,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            '${s.theyOweUs}: ${formatMru(position.theyOweUs, locale)}',
+            style: TextStyle(color: Colors.red.shade700),
+          ),
+          Text(
+            '${s.weOweThem}: ${formatMru(position.weOweThem, locale)}',
+            style: TextStyle(color: Colors.green.shade700),
+          ),
+          const SizedBox(height: 6),
           Text(s.currentBalance),
           Text(
-            formatMru(value, Localizations.localeOf(context).toLanguageTag()),
+            formatMru(position.balance.abs(), locale),
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: color,
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(label, style: TextStyle(color: color)),
+          Text(
+            position.theyOweUs > 0
+                ? s.clientOwesUs
+                : position.weOweThem > 0
+                ? s.clientCredit
+                : s.balanced,
+            style: TextStyle(color: color),
+          ),
         ],
       ),
     );

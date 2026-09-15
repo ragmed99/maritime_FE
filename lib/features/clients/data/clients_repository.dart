@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import '../../../core/models/account_position.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/client_models.dart';
 
@@ -63,7 +62,7 @@ class ClientsRepository {
       firstPage = false;
     }
     return ClientStatementData(
-      currentBalance: double.parse(balance.data!['balance'].toString()),
+      position: AccountPosition.fromJson(balance.data!),
       transactions: transactions,
     );
   }
@@ -111,15 +110,5 @@ class ClientsRepository {
       if (type == 'CLIENT_PURCHASE') 'ship': shipId,
       if (type == 'CLIENT_PURCHASE') 'trip': tripId,
     },
-  );
-
-  Future<Uint8List> statementPdf(
-    String clientId,
-    ClientFilters filters,
-  ) async => Uint8List.fromList(
-    await _api.download(
-      'clients/$clientId/statement/pdf/',
-      query: filters.toQuery(),
-    ),
   );
 }

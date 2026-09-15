@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maritime_frontend/core/config/app_environment.dart';
 import 'package:maritime_frontend/core/network/api_client.dart';
+import 'package:maritime_frontend/core/models/account_position.dart';
 import 'package:maritime_frontend/core/storage/token_storage.dart';
 import 'package:maritime_frontend/features/partners/application/partners_controller.dart';
 import 'package:maritime_frontend/features/partners/data/partners_repository.dart';
@@ -53,13 +54,25 @@ void main() {
   });
 
   testWidgets('partner balance displays all three directions', (tester) async {
-    await tester.pumpWidget(const _BalanceHarness(value: 50));
+    await tester.pumpWidget(
+      const _BalanceHarness(
+        value: AccountPosition(theyOweUs: 50, weOweThem: 0, balance: 50),
+      ),
+    );
     expect(find.text('Le partenaire nous doit'), findsOneWidget);
 
-    await tester.pumpWidget(const _BalanceHarness(value: -50));
+    await tester.pumpWidget(
+      const _BalanceHarness(
+        value: AccountPosition(theyOweUs: 0, weOweThem: 50, balance: -50),
+      ),
+    );
     expect(find.text('Nous devons au partenaire'), findsOneWidget);
 
-    await tester.pumpWidget(const _BalanceHarness(value: 0));
+    await tester.pumpWidget(
+      const _BalanceHarness(
+        value: AccountPosition(theyOweUs: 0, weOweThem: 0, balance: 0),
+      ),
+    );
     expect(find.text('Solde nul'), findsOneWidget);
   });
 }
@@ -94,7 +107,7 @@ class _Harness extends StatelessWidget {
 
 class _BalanceHarness extends StatelessWidget {
   const _BalanceHarness({required this.value});
-  final double value;
+  final AccountPosition value;
 
   @override
   Widget build(BuildContext context) => MaterialApp(

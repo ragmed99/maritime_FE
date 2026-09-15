@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/models/account_position.dart';
 import '../domain/owner_models.dart';
 
 class OwnersRepository {
@@ -34,10 +35,8 @@ class OwnersRepository {
   }
 
   Future<void> deleteOwner(String id) => _api.delete('owners/$id/');
-  Future<double> balance(String id) async => double.parse(
-    (await _api.get<Map<String, dynamic>>(
-      'owners/$id/balance/',
-    )).data!['balance'].toString(),
+  Future<AccountPosition> balance(String id) async => AccountPosition.fromJson(
+    (await _api.get<Map<String, dynamic>>('owners/$id/balance/')).data!,
   );
   Future<List<OwnerTransaction>> transactions(String id) async => (await _rows(
     'transactions/?owner_account=$id',

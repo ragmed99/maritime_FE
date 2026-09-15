@@ -1,6 +1,6 @@
 {
   "@@locale": "fr",
-  "appName": "Gestion maritime",
+  "appName": "TAR FISHING",
   "startupMessage": "Préparation de votre espace maritime…",
   "loginTitle": "Connexion",
   "username": "Nom d’utilisateur",
@@ -120,6 +120,8 @@
   "transactionType": "Type de transaction",
   "trip": "Voyage",
   "date": "Date",
+  "theyOweUs": "Il nous doit",
+  "weOweThem": "Nous lui devons",
   "shipOptional": "Navire (facultatif)",
   "tripOptional": "Voyage (facultatif)",
   "none": "Aucun",

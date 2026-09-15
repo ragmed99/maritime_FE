@@ -9,7 +9,7 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
-  String get appName => 'Gestion maritime';
+  String get appName => 'TAR FISHING';
 
   @override
   String get startupMessage => 'Préparation de votre espace maritime…';
@@ -375,6 +375,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get date => 'Date';
+
+  @override
+  String get theyOweUs => 'Il nous doit';
+
+  @override
+  String get weOweThem => 'Nous lui devons';
 
   @override
   String get shipOptional => 'Navire (facultatif)';

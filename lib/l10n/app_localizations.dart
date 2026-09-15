@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In fr, this message translates to:
-  /// **'Gestion maritime'**
+  /// **'TAR FISHING'**
   String get appName;
 
   /// No description provided for @startupMessage.
@@ -817,6 +817,18 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Date'**
   String get date;
+
+  /// No description provided for @theyOweUs.
+  ///
+  /// In fr, this message translates to:
+  /// **'Il nous doit'**
+  String get theyOweUs;
+
+  /// No description provided for @weOweThem.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nous lui devons'**
+  String get weOweThem;
 
   /// No description provided for @shipOptional.
   ///

@@ -368,9 +368,6 @@ class _ShipDetailsScreenState extends State<ShipDetailsScreen> {
       id: trip?.id,
       shipId: widget.ship.id,
       departureDate: input.departure,
-      departureTime: _apiTime(input.departureTime),
-      returnDate: input.returnDate,
-      arrivalTime: _apiTime(input.arrivalTime),
       origin: input.origin,
       destination: input.destination,
       notes: input.notes,
@@ -401,10 +398,7 @@ class _TripCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
         child: ListTile(
-          title: Text(
-            '${f.format(trip.departureDate)} ${_displayTime(context, trip.departureTime)} — '
-            '${trip.returnDate == null ? s.ongoing : '${f.format(trip.returnDate!)} ${_displayTime(context, trip.arrivalTime)}'}',
-          ),
+          title: Text(f.format(trip.departureDate)),
           subtitle: Text(
             '${s.totalRevenue}: ${formatMru(trip.financials!.revenue, locale)} · ${s.totalExpenses}: ${formatMru(trip.financials!.expenses, locale)}\n${s.profitLoss}: ${formatMru(trip.financials!.profit, locale)}',
           ),
@@ -557,15 +551,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         runSpacing: 12,
                         children: [
                           _TripDate(
-                            label: s.departureDate,
-                            value:
-                                '${DateFormat.yMd(locale).format(widget.trip.departureDate)} ${_displayTime(context, widget.trip.departureTime)}',
-                          ),
-                          _TripDate(
-                            label: s.returnDate,
-                            value: widget.trip.returnDate == null
-                                ? s.ongoing
-                                : '${DateFormat.yMd(locale).format(widget.trip.returnDate!)} ${_displayTime(context, widget.trip.arrivalTime)}',
+                            label: s.date,
+                            value: DateFormat.yMd(
+                              locale,
+                            ).format(widget.trip.departureDate),
                           ),
                           if (widget.trip.origin.isNotEmpty)
                             _TripDate(
@@ -793,9 +782,6 @@ class _ShipDialogState extends State<_ShipDialog> {
 class _TripInput {
   const _TripInput(
     this.departure,
-    this.departureTime,
-    this.returnDate,
-    this.arrivalTime,
     this.origin,
     this.destination,
     this.notes,
@@ -803,27 +789,12 @@ class _TripInput {
     this.revenues,
   );
   final DateTime departure;
-  final TimeOfDay departureTime;
-  final DateTime? returnDate;
-  final TimeOfDay arrivalTime;
   final String origin;
   final String destination;
   final String notes;
   final List<TripFinancialEntry> expenses;
   final List<TripFinancialEntry> revenues;
 }
-
-String _apiTime(TimeOfDay value) =>
-    '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}:00';
-
-TimeOfDay _readTime(String? value) {
-  if (value == null) return TimeOfDay.now();
-  final parts = value.split(':');
-  return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-}
-
-String _displayTime(BuildContext context, String? value) =>
-    value == null ? '' : _readTime(value).format(context);
 
 class _EntryDraft {
   final amount = TextEditingController();
@@ -843,9 +814,6 @@ class _TripDialog extends StatefulWidget {
 
 class _TripDialogState extends State<_TripDialog> {
   late DateTime departure = widget.trip?.departureDate ?? DateTime.now();
-  late TimeOfDay departureTime = _readTime(widget.trip?.departureTime);
-  DateTime? returnDate;
-  late TimeOfDay arrivalTime = _readTime(widget.trip?.arrivalTime);
   final expenses = <_EntryDraft>[];
   final revenues = <_EntryDraft>[];
   String? validationError;
@@ -858,12 +826,6 @@ class _TripDialogState extends State<_TripDialog> {
   late final TextEditingController notes = TextEditingController(
     text: widget.trip?.notes,
   );
-  @override
-  void initState() {
-    super.initState();
-    returnDate = widget.trip?.returnDate;
-  }
-
   @override
   void dispose() {
     origin.dispose();
@@ -888,7 +850,7 @@ class _TripDialogState extends State<_TripDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text(s.departureDate),
+                title: Text(s.date),
                 subtitle: Text(DateFormat.yMd(locale).format(departure)),
                 trailing: const Icon(Icons.calendar_today),
                 onTap: () async {
@@ -899,48 +861,6 @@ class _TripDialogState extends State<_TripDialog> {
                     initialDate: departure,
                   );
                   if (value != null) setState(() => departure = value);
-                },
-              ),
-              ListTile(
-                title: Text(s.departureTime),
-                subtitle: Text(departureTime.format(context)),
-                trailing: const Icon(Icons.schedule),
-                onTap: () async {
-                  final value = await showTimePicker(
-                    context: context,
-                    initialTime: departureTime,
-                  );
-                  if (value != null) setState(() => departureTime = value);
-                },
-              ),
-              ListTile(
-                title: Text(s.returnDate),
-                subtitle: Text(
-                  returnDate == null
-                      ? s.ongoing
-                      : DateFormat.yMd(locale).format(returnDate!),
-                ),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () async {
-                  final value = await showDatePicker(
-                    context: context,
-                    firstDate: departure,
-                    lastDate: DateTime(2100),
-                    initialDate: returnDate ?? departure,
-                  );
-                  if (value != null) setState(() => returnDate = value);
-                },
-              ),
-              ListTile(
-                title: Text(s.arrivalTime),
-                subtitle: Text(arrivalTime.format(context)),
-                trailing: const Icon(Icons.schedule),
-                onTap: () async {
-                  final value = await showTimePicker(
-                    context: context,
-                    initialTime: arrivalTime,
-                  );
-                  if (value != null) setState(() => arrivalTime = value);
                 },
               ),
               TextField(
@@ -1080,9 +1000,6 @@ class _TripDialogState extends State<_TripDialog> {
       context,
       _TripInput(
         departure,
-        departureTime,
-        returnDate,
-        arrivalTime,
         origin.text.trim(),
         destination.text.trim(),
         notes.text.trim(),

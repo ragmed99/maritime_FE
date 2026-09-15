@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
+import '../../../core/widgets/app_logo.dart';
 
 import '../../auth/application/auth_controller.dart';
 import '../../administration/data/administration_repository.dart';
@@ -118,11 +119,7 @@ class _MainShellState extends State<MainShell> {
                       setState(() => _selected = value),
                   leading: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Icon(
-                      Icons.directions_boat_rounded,
-                      size: 36,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                    child: const AppLogo(size: 52),
                   ),
                   trailing: Expanded(
                     child: Align(
@@ -164,9 +161,17 @@ class _MainShellState extends State<MainShell> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(28, 24, 16, 12),
-                child: Text(
-                  strings.appName,
-                  style: Theme.of(context).textTheme.titleLarge,
+                child: Row(
+                  children: [
+                    const AppLogo(size: 52),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        strings.appName,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               ...items.map(

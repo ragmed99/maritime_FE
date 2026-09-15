@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/models/account_position.dart';
 import '../application/partners_controller.dart';
 import '../data/partners_repository.dart';
 import '../domain/partner_models.dart';
@@ -263,7 +264,11 @@ class PartnerDetailsScreen extends StatefulWidget {
 }
 
 class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
-  double balance = 0;
+  AccountPosition balance = const AccountPosition(
+    theyOweUs: 0,
+    weOweThem: 0,
+    balance: 0,
+  );
   List<PartnerTransaction> transactions = [];
   DateTime? startDate;
   DateTime? endDate;
@@ -297,7 +302,7 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
         widget.repository.balance(widget.partner.id),
         widget.repository.transactions(widget.partner.id),
       ]);
-      balance = values[0] as double;
+      balance = values[0] as AccountPosition;
       transactions = values[1] as List<PartnerTransaction>;
       transactions.sort((a, b) => b.time.compareTo(a.time));
     } catch (_) {
@@ -458,19 +463,19 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
 class PartnerBalance extends StatelessWidget {
   const PartnerBalance({required this.value, super.key});
 
-  final double value;
+  final AccountPosition value;
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final color = value > 0
+    final color = value.theyOweUs > 0
         ? Colors.red.shade700
-        : value < 0
+        : value.weOweThem > 0
         ? Colors.green.shade700
         : Theme.of(context).colorScheme.onSurfaceVariant;
-    final label = value > 0
+    final label = value.theyOweUs > 0
         ? s.partnerOwesUs
-        : value < 0
+        : value.weOweThem > 0
         ? s.weOwePartner
         : s.balanced;
     return SizedBox(
@@ -478,10 +483,19 @@ class PartnerBalance extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            '${s.theyOweUs}: ${formatMru(value.theyOweUs, Localizations.localeOf(context).toLanguageTag())}',
+            style: TextStyle(color: Colors.red.shade700),
+          ),
+          Text(
+            '${s.weOweThem}: ${formatMru(value.weOweThem, Localizations.localeOf(context).toLanguageTag())}',
+            style: TextStyle(color: Colors.green.shade700),
+          ),
+          const SizedBox(height: 6),
           Text(s.currentBalance),
           Text(
             formatMru(
-              value.abs(),
+              value.balance.abs(),
               Localizations.localeOf(context).toLanguageTag(),
             ),
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(

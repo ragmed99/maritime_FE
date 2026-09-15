@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/models/account_position.dart';
 import '../application/owners_controller.dart';
 import '../data/owners_repository.dart';
 import '../domain/owner_models.dart';
@@ -262,7 +263,11 @@ class OwnerDetailsScreen extends StatefulWidget {
 }
 
 class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
-  double balance = 0;
+  AccountPosition balance = const AccountPosition(
+    theyOweUs: 0,
+    weOweThem: 0,
+    balance: 0,
+  );
   List<OwnerTransaction> transactions = [];
   List<OwnerShip> ships = [];
   DateTime? startDate;
@@ -298,7 +303,7 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
         widget.repository.transactions(widget.owner.id),
         widget.repository.ships(widget.owner.id),
       ]);
-      balance = values[0] as double;
+      balance = values[0] as AccountPosition;
       transactions = values[1] as List<OwnerTransaction>;
       ships = values[2] as List<OwnerShip>;
       transactions.sort((a, b) => b.time.compareTo(a.time));
@@ -460,30 +465,39 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
 class OwnerBalance extends StatelessWidget {
   const OwnerBalance({required this.value, super.key});
 
-  final double value;
+  final AccountPosition value;
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final color = value > 0
+    final color = value.theyOweUs > 0
         ? Colors.red.shade700
-        : value < 0
+        : value.weOweThem > 0
         ? Colors.green.shade700
         : Theme.of(context).colorScheme.onSurfaceVariant;
-    final label = value > 0
-        ? s.businessOwesOwner
-        : value < 0
+    final label = value.theyOweUs > 0
         ? s.ownerOwesBusiness
+        : value.weOweThem > 0
+        ? s.businessOwesOwner
         : s.balanced;
     return SizedBox(
       width: 280,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            '${s.theyOweUs}: ${formatMru(value.theyOweUs, Localizations.localeOf(context).toLanguageTag())}',
+            style: TextStyle(color: Colors.red.shade700),
+          ),
+          Text(
+            '${s.weOweThem}: ${formatMru(value.weOweThem, Localizations.localeOf(context).toLanguageTag())}',
+            style: TextStyle(color: Colors.green.shade700),
+          ),
+          const SizedBox(height: 6),
           Text(s.currentBalance),
           Text(
             formatMru(
-              value.abs(),
+              value.balance.abs(),
               Localizations.localeOf(context).toLanguageTag(),
             ),
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(

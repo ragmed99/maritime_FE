@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
+import '../../../core/widgets/app_logo.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -12,11 +13,7 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.directions_boat_rounded,
-              size: 72,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+            const AppLogo(size: 144),
             const SizedBox(height: 24),
             Text(
               strings.appName,

@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/models/account_position.dart';
 import '../domain/partner_models.dart';
 
 class PartnersRepository {
@@ -34,10 +35,8 @@ class PartnersRepository {
   }
 
   Future<void> deletePartner(String id) => _api.delete('partners/$id/');
-  Future<double> balance(String id) async => double.parse(
-    (await _api.get<Map<String, dynamic>>(
-      'partners/$id/balance/',
-    )).data!['balance'].toString(),
+  Future<AccountPosition> balance(String id) async => AccountPosition.fromJson(
+    (await _api.get<Map<String, dynamic>>('partners/$id/balance/')).data!,
   );
   Future<List<PartnerTransaction>> transactions(String id) async =>
       (await _rows('transactions/'))

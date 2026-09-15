@@ -1,6 +1,6 @@
 {
   "@@locale": "ar",
-  "appName": "الإدارة المالية البحرية",
+  "appName": "TAR FISHING",
   "startupMessage": "جارٍ تجهيز مساحة العمل البحرية…",
   "loginTitle": "تسجيل الدخول",
   "username": "اسم المستخدم",
@@ -120,6 +120,8 @@
   "transactionType": "نوع المعاملة",
   "trip": "الرحلة",
   "date": "التاريخ",
+  "theyOweUs": "هو مدين لنا",
+  "weOweThem": "نحن مدينون له",
   "shipOptional": "السفينة (اختياري)",
   "tripOptional": "الرحلة (اختياري)",
   "none": "لا يوجد",

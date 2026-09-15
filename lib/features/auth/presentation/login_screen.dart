@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../application/auth_controller.dart';
+import '../../../core/widgets/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({required this.controller, super.key});
@@ -48,12 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(
-                        Icons.directions_boat_rounded,
-                        size: 56,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                      const Center(child: AppLogo(size: 120)),
                       const SizedBox(height: 16),
+                      Text(
+                        strings.appName,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 8),
                       Text(
                         strings.loginTitle,
                         textAlign: TextAlign.center,
