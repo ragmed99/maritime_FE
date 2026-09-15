@@ -59,14 +59,46 @@ class MaritimeApp extends StatelessWidget {
         ],
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF075E78),
+            seedColor: const Color(0xFF0B4A75),
             brightness: Brightness.light,
           ),
           useMaterial3: true,
-          inputDecorationTheme: const InputDecorationTheme(
-            border: OutlineInputBorder(),
+          scaffoldBackgroundColor: const Color(0xFFF4F8FB),
+          appBarTheme: const AppBarTheme(
+            centerTitle: false,
+            elevation: 0,
+            scrolledUnderElevation: 2,
+            backgroundColor: Color(0xFFF4F8FB),
           ),
-          cardTheme: const CardThemeData(margin: EdgeInsets.zero),
+          inputDecorationTheme: InputDecorationTheme(
+            border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 15,
+            ),
+          ),
+          cardTheme: CardThemeData(
+            margin: EdgeInsets.zero,
+            elevation: 1,
+            shadowColor: const Color(0xFF0B4A75).withValues(alpha: 0.12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+          navigationRailTheme: const NavigationRailThemeData(
+            indicatorColor: Color(0xFFD6EAF7),
+            useIndicator: true,
+          ),
         ),
         home: switch (authController.status) {
           AuthStatus.initializing => const SplashScreen(),

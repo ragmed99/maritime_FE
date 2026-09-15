@@ -77,18 +77,12 @@ class ShipsRepository {
     String? id,
     required String shipId,
     required DateTime departureDate,
-    required String origin,
-    required String destination,
-    required String notes,
     List<TripFinancialEntry> expenses = const [],
     List<TripFinancialEntry> revenues = const [],
   }) async {
     final data = <String, dynamic>{
       'ship': shipId,
       'departure_date': _date(departureDate),
-      'origin': origin,
-      'destination': destination,
-      'notes': notes,
     };
     if (id == null) {
       data['expenses'] = expenses.map((entry) => entry.toJson()).toList();

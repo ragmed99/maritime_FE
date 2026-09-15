@@ -368,9 +368,6 @@ class _ShipDetailsScreenState extends State<ShipDetailsScreen> {
       id: trip?.id,
       shipId: widget.ship.id,
       departureDate: input.departure,
-      origin: input.origin,
-      destination: input.destination,
-      notes: input.notes,
       expenses: input.expenses,
       revenues: input.revenues,
     );
@@ -780,18 +777,8 @@ class _ShipDialogState extends State<_ShipDialog> {
 }
 
 class _TripInput {
-  const _TripInput(
-    this.departure,
-    this.origin,
-    this.destination,
-    this.notes,
-    this.expenses,
-    this.revenues,
-  );
+  const _TripInput(this.departure, this.expenses, this.revenues);
   final DateTime departure;
-  final String origin;
-  final String destination;
-  final String notes;
   final List<TripFinancialEntry> expenses;
   final List<TripFinancialEntry> revenues;
 }
@@ -817,20 +804,8 @@ class _TripDialogState extends State<_TripDialog> {
   final expenses = <_EntryDraft>[];
   final revenues = <_EntryDraft>[];
   String? validationError;
-  late final TextEditingController origin = TextEditingController(
-    text: widget.trip?.origin,
-  );
-  late final TextEditingController destination = TextEditingController(
-    text: widget.trip?.destination,
-  );
-  late final TextEditingController notes = TextEditingController(
-    text: widget.trip?.notes,
-  );
   @override
   void dispose() {
-    origin.dispose();
-    destination.dispose();
-    notes.dispose();
     for (final entry in [...expenses, ...revenues]) {
       entry.dispose();
     }
@@ -862,21 +837,6 @@ class _TripDialogState extends State<_TripDialog> {
                   );
                   if (value != null) setState(() => departure = value);
                 },
-              ),
-              TextField(
-                controller: origin,
-                decoration: InputDecoration(labelText: s.origin),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: destination,
-                decoration: InputDecoration(labelText: s.destination),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: notes,
-                decoration: InputDecoration(labelText: s.notes),
-                maxLines: 2,
               ),
               if (widget.trip == null) ...[
                 const SizedBox(height: 18),
@@ -996,17 +956,7 @@ class _TripDialogState extends State<_TripDialog> {
       setState(() {});
       return;
     }
-    Navigator.pop(
-      context,
-      _TripInput(
-        departure,
-        origin.text.trim(),
-        destination.text.trim(),
-        notes.text.trim(),
-        expenseValues,
-        revenueValues,
-      ),
-    );
+    Navigator.pop(context, _TripInput(departure, expenseValues, revenueValues));
   }
 }
 
