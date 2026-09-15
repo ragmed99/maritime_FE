@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/fade_slide_in.dart';
+import '../../../core/widgets/shimmer_box.dart';
 import '../application/dashboard_controller.dart';
 import '../domain/dashboard_models.dart';
 
@@ -27,9 +30,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) => switch (widget.controller.status) {
-        DashboardStatus.idle || DashboardStatus.loading => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        DashboardStatus.idle ||
+        DashboardStatus.loading => const _DashboardSkeleton(),
         DashboardStatus.error => _ErrorState(onRetry: widget.controller.load),
         DashboardStatus.loaded => _DashboardContent(
           data: widget.controller.data!,
@@ -140,40 +142,57 @@ class _MetricGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = (availableWidth - (columns - 1) * 16) / columns;
+    final scheme = Theme.of(context).colorScheme;
     return Wrap(
       spacing: 16,
       runSpacing: 16,
-      children: metrics
+      children: metrics.indexed
           .map(
-            (item) => SizedBox(
-              width: width,
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Row(
-                    children: [
-                      Icon(
-                        item.$3,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.$1),
-                            const SizedBox(height: 8),
-                            Text(
-                              formatMru(
-                                item.$2,
-                                Localizations.localeOf(context).toLanguageTag(),
-                              ),
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                          ],
+            (entry) => FadeSlideIn(
+              delay: Duration(milliseconds: 40 * entry.$1),
+              child: SizedBox(
+                width: width,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            entry.$2.$3,
+                            color: scheme.primary,
+                            size: 20,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.$2.$1,
+                                style: TextStyle(color: scheme.onSurfaceVariant),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                formatMru(
+                                  entry.$2.$2,
+                                  Localizations.localeOf(
+                                    context,
+                                  ).toLanguageTag(),
+                                ),
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -389,15 +408,15 @@ class _PeopleSection extends StatelessWidget {
       ? strings.weOwePartner
       : strings.balanced;
   Color _clientColor(BuildContext context, double balance) => balance > 0
-      ? Colors.red.shade700
+      ? context.moneyColors.negative
       : balance < 0
-      ? Colors.green.shade700
-      : Theme.of(context).colorScheme.onSurfaceVariant;
+      ? context.moneyColors.positive
+      : context.moneyColors.neutral;
   Color _partnerColor(BuildContext context, double balance) => balance > 0
-      ? Colors.red.shade700
+      ? context.moneyColors.negative
       : balance < 0
-      ? Colors.orange.shade800
-      : Theme.of(context).colorScheme.onSurfaceVariant;
+      ? context.moneyColors.positive
+      : context.moneyColors.neutral;
 }
 
 class _EmptyState extends StatelessWidget {
@@ -435,4 +454,49 @@ class _ErrorState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Placeholder layout shown while the dashboard is loading, mirroring the
+/// loaded layout's shape so content doesn't jump around once it arrives.
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final columns = constraints.maxWidth >= 900
+          ? 4
+          : constraints.maxWidth >= 560
+          ? 2
+          : 1;
+      final cardWidth =
+          (constraints.maxWidth - 48 - (columns - 1) * 16) / columns;
+      return ListView(
+        padding: const EdgeInsets.all(24),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          const ShimmerBox(width: 220, height: 28),
+          const SizedBox(height: 8),
+          const ShimmerBox(width: 160, height: 16),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: List.generate(
+              7,
+              (_) => ShimmerBox(
+                width: cardWidth,
+                height: 78,
+                borderRadius: 16,
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+          const ShimmerBox(width: 180, height: 22),
+          const SizedBox(height: 12),
+          ShimmerBox(width: constraints.maxWidth - 48, height: 120, borderRadius: 16),
+        ],
+      );
+    },
+  );
 }

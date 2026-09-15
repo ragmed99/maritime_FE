@@ -80,6 +80,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get arabic => 'Arabe';
 
   @override
+  String get appearance => 'Apparence';
+
+  @override
+  String get themeSystem => 'Système';
+
+  @override
+  String get themeLight => 'Clair';
+
+  @override
+  String get themeDark => 'Sombre';
+
+  @override
   String get foundationMessage =>
       'Cette section est prête à recevoir ses fonctionnalités.';
 

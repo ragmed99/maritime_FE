@@ -4,6 +4,7 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/models/account_position.dart';
+import '../../../core/theme/app_theme.dart';
 import '../application/clients_controller.dart';
 import '../data/clients_repository.dart';
 import '../domain/client_models.dart';
@@ -416,11 +417,12 @@ class _Balance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final money = context.moneyColors;
     final color = position.theyOweUs > 0
-        ? Colors.red.shade700
+        ? money.negative
         : position.weOweThem > 0
-        ? Colors.green.shade700
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+        ? money.positive
+        : money.neutral;
     final locale = Localizations.localeOf(context).toLanguageTag();
     return SizedBox(
       width: 280,
@@ -429,11 +431,11 @@ class _Balance extends StatelessWidget {
         children: [
           Text(
             '${s.theyOweUs}: ${formatMru(position.theyOweUs, locale)}',
-            style: TextStyle(color: Colors.red.shade700),
+            style: TextStyle(color: money.negative),
           ),
           Text(
             '${s.weOweThem}: ${formatMru(position.weOweThem, locale)}',
-            style: TextStyle(color: Colors.green.shade700),
+            style: TextStyle(color: money.positive),
           ),
           const SizedBox(height: 6),
           Text(s.currentBalance),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
+import '../core/theme/app_theme.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/administration/data/administration_repository.dart';
 import '../features/auth/presentation/login_screen.dart';
@@ -13,6 +14,7 @@ import '../features/partners/application/partners_controller.dart';
 import '../features/owners/application/owners_controller.dart';
 import '../features/reports/data/reports_repository.dart';
 import '../features/settings/application/locale_controller.dart';
+import '../features/settings/application/theme_controller.dart';
 import '../features/ships/application/ships_controller.dart';
 import '../features/transactions/application/transactions_controller.dart';
 
@@ -28,6 +30,7 @@ class MaritimeApp extends StatelessWidget {
     required this.reportsRepository,
     required this.administrationRepository,
     required this.localeController,
+    required this.themeController,
     super.key,
   });
 
@@ -41,11 +44,16 @@ class MaritimeApp extends StatelessWidget {
   final ReportsRepository reportsRepository;
   final AdministrationRepository administrationRepository;
   final LocaleController localeController;
+  final ThemeController themeController;
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([authController, localeController]),
+      listenable: Listenable.merge([
+        authController,
+        localeController,
+        themeController,
+      ]),
       builder: (context, _) => MaterialApp(
         debugShowCheckedModeBanner: false,
         onGenerateTitle: (context) => AppLocalizations.of(context).appName,
@@ -57,49 +65,9 @@ class MaritimeApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF0B4A75),
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFF4F8FB),
-          appBarTheme: const AppBarTheme(
-            centerTitle: false,
-            elevation: 0,
-            scrolledUnderElevation: 2,
-            backgroundColor: Color(0xFFF4F8FB),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 15,
-            ),
-          ),
-          cardTheme: CardThemeData(
-            margin: EdgeInsets.zero,
-            elevation: 1,
-            shadowColor: const Color(0xFF0B4A75).withValues(alpha: 0.12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-          filledButtonTheme: FilledButtonThemeData(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-          navigationRailTheme: const NavigationRailThemeData(
-            indicatorColor: Color(0xFFD6EAF7),
-            useIndicator: true,
-          ),
-        ),
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: themeController.mode,
         home: switch (authController.status) {
           AuthStatus.initializing => const SplashScreen(),
           AuthStatus.unauthenticated => LoginScreen(controller: authController),
@@ -114,6 +82,7 @@ class MaritimeApp extends StatelessWidget {
             reportsRepository: reportsRepository,
             administrationRepository: administrationRepository,
             localeController: localeController,
+            themeController: themeController,
           ),
         },
       ),

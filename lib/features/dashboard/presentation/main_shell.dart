@@ -14,6 +14,7 @@ import '../../owners/presentation/owners_screen.dart';
 import '../../reports/data/reports_repository.dart';
 import '../../reports/presentation/reports_screen.dart';
 import '../../settings/application/locale_controller.dart';
+import '../../settings/application/theme_controller.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../ships/application/ships_controller.dart';
 import '../../ships/presentation/ships_screen.dart';
@@ -34,6 +35,7 @@ class MainShell extends StatefulWidget {
     required this.reportsRepository,
     required this.administrationRepository,
     required this.localeController,
+    required this.themeController,
     super.key,
   });
   final AuthController authController;
@@ -46,6 +48,7 @@ class MainShell extends StatefulWidget {
   final ReportsRepository reportsRepository;
   final AdministrationRepository administrationRepository;
   final LocaleController localeController;
+  final ThemeController themeController;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -102,6 +105,7 @@ class _MainShellState extends State<MainShell> {
     screens.add(
       SettingsScreen(
         controller: widget.localeController,
+        themeController: widget.themeController,
         repository: widget.administrationRepository,
       ),
     );
@@ -145,13 +149,31 @@ class _MainShellState extends State<MainShell> {
                       .toList(),
                 ),
                 const VerticalDivider(width: 1),
-                Expanded(child: screens[_selected]),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1600),
+                      child: _AnimatedScreen(
+                        index: _selected,
+                        child: screens[_selected],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           );
         }
         return Scaffold(
-          appBar: AppBar(title: Text(items[_selected].label)),
+          appBar: AppBar(
+            title: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Text(
+                items[_selected].label,
+                key: ValueKey(_selected),
+              ),
+            ),
+          ),
           drawer: NavigationDrawer(
             selectedIndex: _selected,
             onDestinationSelected: (value) {
@@ -189,11 +211,37 @@ class _MainShellState extends State<MainShell> {
               ),
             ],
           ),
-          body: screens[_selected],
+          body: _AnimatedScreen(index: _selected, child: screens[_selected]),
         );
       },
     );
   }
+}
+
+/// Fades and slightly slides the new screen in when the selected
+/// destination changes, so navigation feels smooth rather than abrupt.
+class _AnimatedScreen extends StatelessWidget {
+  const _AnimatedScreen({required this.index, required this.child});
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: const Duration(milliseconds: 220),
+    switchInCurve: Curves.easeOut,
+    switchOutCurve: Curves.easeIn,
+    transitionBuilder: (widget, animation) => FadeTransition(
+      opacity: animation,
+      child: SlideTransition(
+        position: Tween(
+          begin: const Offset(0, 0.02),
+          end: Offset.zero,
+        ).animate(animation),
+        child: widget,
+      ),
+    ),
+    child: KeyedSubtree(key: ValueKey(index), child: child),
+  );
 }
 
 class _NavItem {

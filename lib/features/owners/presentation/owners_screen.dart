@@ -4,6 +4,7 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/models/account_position.dart';
+import '../../../core/theme/app_theme.dart';
 import '../application/owners_controller.dart';
 import '../data/owners_repository.dart';
 import '../domain/owner_models.dart';
@@ -470,11 +471,12 @@ class OwnerBalance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final money = context.moneyColors;
     final color = value.theyOweUs > 0
-        ? Colors.red.shade700
+        ? money.negative
         : value.weOweThem > 0
-        ? Colors.green.shade700
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+        ? money.positive
+        : money.neutral;
     final label = value.theyOweUs > 0
         ? s.ownerOwesBusiness
         : value.weOweThem > 0
@@ -487,11 +489,11 @@ class OwnerBalance extends StatelessWidget {
         children: [
           Text(
             '${s.theyOweUs}: ${formatMru(value.theyOweUs, Localizations.localeOf(context).toLanguageTag())}',
-            style: TextStyle(color: Colors.red.shade700),
+            style: TextStyle(color: money.negative),
           ),
           Text(
             '${s.weOweThem}: ${formatMru(value.weOweThem, Localizations.localeOf(context).toLanguageTag())}',
-            style: TextStyle(color: Colors.green.shade700),
+            style: TextStyle(color: money.positive),
           ),
           const SizedBox(height: 6),
           Text(s.currentBalance),

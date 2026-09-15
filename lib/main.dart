@@ -16,6 +16,7 @@ import 'features/reports/data/reports_repository.dart';
 import 'features/owners/application/owners_controller.dart';
 import 'features/owners/data/owners_repository.dart';
 import 'features/settings/application/locale_controller.dart';
+import 'features/settings/application/theme_controller.dart';
 import 'features/ships/application/ships_controller.dart';
 import 'features/ships/data/ships_repository.dart';
 import 'features/transactions/application/transactions_controller.dart';
@@ -40,7 +41,8 @@ Future<void> main() async {
   );
   final reportsRepository = ReportsRepository(apiClient);
   final localeController = LocaleController();
-  await localeController.initialize();
+  final themeController = ThemeController();
+  await Future.wait([localeController.initialize(), themeController.initialize()]);
   runApp(
     MaritimeApp(
       authController: authController,
@@ -53,6 +55,7 @@ Future<void> main() async {
       reportsRepository: reportsRepository,
       administrationRepository: administrationRepository,
       localeController: localeController,
+      themeController: themeController,
     ),
   );
   await authController.initialize();
