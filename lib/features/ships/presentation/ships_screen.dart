@@ -1243,7 +1243,7 @@ class _TripLedgerSheet extends StatelessWidget {
                   );
                 }),
                 SizedBox(
-                  width: 530,
+                  width: 630,
                   child: Table(
                     border: border,
                     columnWidths: widths,
