@@ -122,6 +122,24 @@ void main() {
     expect(storage.refresh, isNull);
   });
 
+  test('temporary refresh server failure keeps stored session', () async {
+    final storage = MemoryTokenStore(access: 'expired', refresh: 'still-valid');
+    final adapter = FakeAdapter((request) {
+      if (request.path == 'auth/refresh/') {
+        return response({}, status: 503);
+      }
+      return response({}, status: 401);
+    });
+    final controller = buildController(environment, storage, adapter);
+
+    await controller.initialize();
+
+    expect(controller.status, AuthStatus.unauthenticated);
+    expect(controller.error, AuthError.server);
+    expect(storage.access, 'expired');
+    expect(storage.refresh, 'still-valid');
+  });
+
   test('logout clears secure tokens and current user', () async {
     final storage = MemoryTokenStore(access: 'access', refresh: 'refresh');
     final adapter = FakeAdapter((_) => response(userJson));

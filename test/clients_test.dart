@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:maritime_frontend/core/config/app_environment.dart';
 import 'package:maritime_frontend/core/network/api_client.dart';
 import 'package:maritime_frontend/core/storage/token_storage.dart';
+import 'package:maritime_frontend/core/theme/app_theme.dart';
 import 'package:maritime_frontend/features/clients/application/clients_controller.dart';
 import 'package:maritime_frontend/features/clients/data/clients_repository.dart';
 import 'package:maritime_frontend/features/clients/domain/client_models.dart';
@@ -71,6 +72,7 @@ class _Harness extends StatelessWidget {
   final ClientsController controller;
   @override
   Widget build(BuildContext context) => MaterialApp(
+    theme: AppTheme.light(),
     locale: const Locale('fr'),
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: const [

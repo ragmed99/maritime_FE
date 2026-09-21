@@ -9,10 +9,10 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
-  String get appName => 'TAR FISHING';
+  String get appName => 'Tar Fishing';
 
   @override
-  String get startupMessage => 'Préparation de votre espace maritime…';
+  String get startupMessage => 'Préparation de votre espace Tar Fishing…';
 
   @override
   String get loginTitle => 'Connexion';
@@ -50,6 +50,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ships => 'Navires';
 
   @override
+  String get allShipsOverall => 'Total de tous les navires';
+
+  @override
   String get clients => 'Clients';
 
   @override
@@ -71,6 +74,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get logout => 'Déconnexion';
 
   @override
+  String get logoutConfirmation => 'Voulez-vous vraiment vous déconnecter ?';
+
+  @override
+  String get confirmLogout => 'Se déconnecter';
+
+  @override
   String get language => 'Langue';
 
   @override
@@ -78,6 +87,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get arabic => 'Arabe';
+
+  @override
+  String get appearance => 'Apparence';
+
+  @override
+  String get themeSystem => 'Système';
+
+  @override
+  String get themeLight => 'Clair';
+
+  @override
+  String get themeDark => 'Sombre';
 
   @override
   String get foundationMessage =>
@@ -102,13 +123,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get netPosition => 'Position nette';
 
   @override
-  String get totalRevenue => 'Revenus totaux';
+  String get totalRevenue => 'Total des revenus';
 
   @override
-  String get totalExpenses => 'Dépenses totales';
+  String get totalExpenses => 'Total des dépenses';
 
   @override
-  String get profitLoss => 'Bénéfice / perte';
+  String get profitLoss => 'Le reste';
 
   @override
   String get shipSummary => 'Résumé des navires';
@@ -275,6 +296,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tripTransactions => 'Transactions du voyage';
 
   @override
+  String get expenses => 'Dépenses';
+
+  @override
+  String get revenues => 'Revenus';
+
+  @override
   String get noTripTransactions => 'Aucune transaction pour ce voyage.';
 
   @override
@@ -287,7 +314,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get addClientPurchase => 'Ajouter un achat client';
 
   @override
+  String get addPurchaseLine => 'Ajouter un autre article';
+
+  @override
   String get revenue => 'Revenu';
+
+  @override
+  String get outcome => 'Recette';
 
   @override
   String get expense => 'Dépense';
@@ -302,7 +335,31 @@ class AppLocalizationsFr extends AppLocalizations {
   String get description => 'Description / motif';
 
   @override
+  String get statementDescription => 'Description';
+
+  @override
   String get amountMru => 'Montant (MRU)';
+
+  @override
+  String get species => 'Espèce';
+
+  @override
+  String get quantity => 'Quantité';
+
+  @override
+  String get unitPrice => 'Prix U';
+
+  @override
+  String get amount => 'Montant';
+
+  @override
+  String get paid => 'Payé';
+
+  @override
+  String get remaining => 'Restant';
+
+  @override
+  String get total => 'Total';
 
   @override
   String get validAmountRequired =>
@@ -350,7 +407,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get purchase => 'Achat';
 
   @override
+  String get purchases => 'Achats';
+
+  @override
   String get payment => 'Paiement';
+
+  @override
+  String get payments => 'Paiements';
+
+  @override
+  String get paymentMethod => 'Mode de paiement';
+
+  @override
+  String get cash => 'Espèces';
 
   @override
   String get filters => 'Filtres';
@@ -780,7 +849,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger les informations de l’entreprise.';
 
   @override
-  String get welcomeTitle => 'Vue financière maritime';
+  String get welcomeTitle => 'Vue financière Tar Fishing';
 
   @override
   String get welcomeSubtitle =>
@@ -797,4 +866,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get retry => 'Réessayer';
+
+  @override
+  String get more => 'Plus';
 }

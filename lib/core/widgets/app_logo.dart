@@ -24,7 +24,7 @@ class AppLogo extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
-        semanticLabel: 'TAR FISHING',
+        semanticLabel: 'Tar Fishing',
       ),
     ),
   );

@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/files/pdf_export.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_date_field.dart';
+import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/list_header_bar.dart';
+import '../../../core/widgets/metric_card.dart';
+import '../../../core/widgets/money_text.dart';
+import '../../../core/widgets/section_header.dart';
 import '../../dashboard/domain/dashboard_models.dart';
 import '../../transactions/domain/transaction_models.dart';
 import '../../transactions/presentation/transactions_screen.dart';
@@ -45,12 +52,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    if (loading) return const Center(child: CircularProgressIndicator());
+    if (loading) return AppStateView.loading();
     if (failed) {
-      return _StateMessage(
+      return AppStateView.error(
         message: s.reportsLoadError,
-        action: s.retry,
-        onTap: _load,
+        retryLabel: s.retry,
+        onRetry: _load,
       );
     }
     final cards = [
@@ -94,20 +101,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      s.reports,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _load,
-                    tooltip: s.refresh,
-                    icon: const Icon(Icons.refresh),
-                  ),
-                ],
+              ListHeaderBar(
+                title: s.reports,
+                onRefresh: _load,
+                refreshTooltip: s.refresh,
               ),
               const SizedBox(height: 20),
               GridView.count(
@@ -119,18 +116,40 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 childAspectRatio: columns == 1 ? 3.2 : 2.3,
                 children: cards
                     .map(
-                      (item) => Card(
+                      (item) => Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardTheme.color,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                          boxShadow: AppShadows.soft(
+                            Theme.of(context).colorScheme.shadow,
+                          ),
+                        ),
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(20),
                           onTap: item.open,
                           child: Padding(
                             padding: const EdgeInsets.all(20),
                             child: Row(
                               children: [
-                                Icon(
-                                  item.icon,
-                                  size: 34,
-                                  color: Theme.of(context).colorScheme.primary,
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary
+                                        .withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    item.icon,
+                                    size: 24,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
@@ -329,14 +348,18 @@ class _StatementSetupScreenState extends State<StatementSetupScreen> {
               ),
           ],
           const SizedBox(height: 12),
-          _DateTile(
+          AppDateField(
             label: s.startDate,
             value: start,
+            placeholder: s.allDates,
             onChanged: (value) => setState(() => start = value),
           ),
-          _DateTile(
+          const SizedBox(height: 10),
+          AppDateField(
             label: s.endDate,
             value: end,
+            placeholder: s.allDates,
+            firstDate: start,
             onChanged: (value) => setState(() => end = value),
           ),
           if (error != null)
@@ -429,12 +452,12 @@ class _StatementPreviewScreenState extends State<StatementPreviewScreen> {
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? AppStateView.loading()
           : failed
-          ? _StateMessage(
+          ? AppStateView.error(
               message: s.reportPreviewError,
-              action: s.retry,
-              onTap: _load,
+              retryLabel: s.retry,
+              onRetry: _load,
             )
           : LayoutBuilder(
               builder: (context, constraints) => ListView(
@@ -470,22 +493,10 @@ class _StatementPreviewScreenState extends State<StatementPreviewScreen> {
                         .map(
                           (item) => SizedBox(
                             width: 220,
-                            child: Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(_summaryLabel(s, item.key)),
-                                    Text(
-                                      formatMru(item.value, locale),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleLarge,
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            child: MetricCard(
+                              label: _summaryLabel(s, item.key),
+                              value: formatMru(item.value, locale),
+                              icon: Icons.summarize_outlined,
                             ),
                           ),
                         )
@@ -493,10 +504,7 @@ class _StatementPreviewScreenState extends State<StatementPreviewScreen> {
                   ),
                   if (data!.tripSummaries.isNotEmpty) ...[
                     const SizedBox(height: 24),
-                    Text(
-                      s.tripResults,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                    SectionHeader(s.tripResults),
                     const SizedBox(height: 10),
                     _TripSummaries(
                       rows: data!.tripSummaries,
@@ -505,13 +513,13 @@ class _StatementPreviewScreenState extends State<StatementPreviewScreen> {
                     ),
                   ],
                   const SizedBox(height: 24),
-                  Text(
-                    s.transactions,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  SectionHeader(s.transactions),
                   const SizedBox(height: 10),
                   if (data!.transactions.isEmpty)
-                    _StateMessage(message: s.noTransactionsFound)
+                    AppStateView.empty(
+                      message: s.noTransactionsFound,
+                      icon: Icons.receipt_long_outlined,
+                    )
                   else
                     _ReportRows(
                       rows: data!.transactions,
@@ -529,18 +537,16 @@ class _StatementPreviewScreenState extends State<StatementPreviewScreen> {
     final title = AppLocalizations.of(context).reportPreview;
     try {
       final bytes = await widget.repository.pdf(widget.request);
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [
-            XFile.fromData(
-              bytes,
-              mimeType: 'application/pdf',
-              name: 'statement.pdf',
-            ),
-          ],
-          title: title,
-        ),
+      final savedPath = await exportPdf(
+        bytes: bytes,
+        filename: 'statement.pdf',
+        title: title,
       );
+      if (mounted && savedPath != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('PDF: $savedPath')));
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -575,7 +581,7 @@ class _ReportRows extends StatelessWidget {
                   subtitle: Text(
                     '${DateFormat.yMd(locale).format(row.date)} ${row.time.substring(0, 5)}${row.description.isEmpty ? '' : '\n${row.description}'}',
                   ),
-                  trailing: Text(formatMru(row.amount, locale)),
+                  trailing: MoneyText(row.amount, locale: locale),
                 ),
               ),
             )
@@ -615,7 +621,7 @@ class _ReportRows extends StatelessWidget {
                       ),
                     ),
                     DataCell(Text(row.createdBy ?? '—')),
-                    DataCell(Text(formatMru(row.amount, locale))),
+                    DataCell(MoneyText(row.amount, locale: locale)),
                   ],
                 ),
               )
@@ -648,7 +654,7 @@ class _TripSummaries extends StatelessWidget {
                   subtitle: Text(
                     '${s.revenue}: ${formatMru(row.revenue, locale)}\n${s.totalExpenses}: ${formatMru(row.expenses, locale)}\n${s.clientPurchase}: ${formatMru(row.purchases, locale)}',
                   ),
-                  trailing: Text(formatMru(row.remaining, locale)),
+                  trailing: MoneyText(row.remaining, locale: locale),
                 ),
               ),
             )
@@ -671,10 +677,10 @@ class _TripSummaries extends StatelessWidget {
                 (row) => DataRow(
                   cells: [
                     DataCell(Text(DateFormat.yMd(locale).format(row.date))),
-                    DataCell(Text(formatMru(row.revenue, locale))),
-                    DataCell(Text(formatMru(row.expenses, locale))),
-                    DataCell(Text(formatMru(row.purchases, locale))),
-                    DataCell(Text(formatMru(row.remaining, locale))),
+                    DataCell(MoneyText(row.revenue, locale: locale)),
+                    DataCell(MoneyText(row.expenses, locale: locale)),
+                    DataCell(MoneyText(row.purchases, locale: locale)),
+                    DataCell(MoneyText(row.remaining, locale: locale)),
                   ],
                 ),
               )
@@ -728,28 +734,64 @@ class _SummaryReportScreenState extends State<SummaryReportScreen> {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final money = context.moneyColors;
     final values = data == null
-        ? <MapEntry<String, double>>[]
+        ? <(String, double, IconData, Color)>[]
         : [
-            MapEntry(s.expectedCash, data!.expectedCash),
-            MapEntry(s.peopleOweUs, data!.peopleOweUs),
-            MapEntry(s.weOwePeople, data!.weOwePeople),
-            MapEntry(s.netPosition, data!.netPosition),
-            MapEntry(s.totalRevenue, data!.totalRevenue),
-            MapEntry(s.totalExpenses, data!.totalExpenses),
-            MapEntry(s.profitLoss, data!.profitLoss),
+            (
+              s.expectedCash,
+              data!.expectedCash,
+              Icons.account_balance_wallet_outlined,
+              Theme.of(context).colorScheme.primary,
+            ),
+            (
+              s.peopleOweUs,
+              data!.peopleOweUs,
+              Icons.call_received_rounded,
+              money.positive,
+            ),
+            (
+              s.weOwePeople,
+              data!.weOwePeople,
+              Icons.call_made_rounded,
+              money.negative,
+            ),
+            (
+              s.netPosition,
+              data!.netPosition,
+              Icons.insights_outlined,
+              Theme.of(context).colorScheme.primary,
+            ),
+            (
+              s.totalRevenue,
+              data!.totalRevenue,
+              Icons.trending_up,
+              money.positive,
+            ),
+            (
+              s.totalExpenses,
+              data!.totalExpenses,
+              Icons.trending_down,
+              money.negative,
+            ),
+            (
+              s.profitLoss,
+              data!.profitLoss,
+              Icons.balance,
+              data!.profitLoss >= 0 ? money.positive : money.negative,
+            ),
           ];
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.daily ? s.dailySummary : s.customDateReport),
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? AppStateView.loading()
           : failed
-          ? _StateMessage(
+          ? AppStateView.error(
               message: s.reportPreviewError,
-              action: s.retry,
-              onTap: _load,
+              retryLabel: s.retry,
+              onRetry: _load,
             )
           : ListView(
               padding: const EdgeInsets.all(24),
@@ -766,22 +808,11 @@ class _SummaryReportScreenState extends State<SummaryReportScreen> {
                       .map(
                         (item) => SizedBox(
                           width: 250,
-                          child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(18),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(item.key),
-                                  Text(
-                                    formatMru(item.value, locale),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.headlineSmall,
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: MetricCard(
+                            label: item.$1,
+                            value: formatMru(item.$2, locale),
+                            icon: item.$3,
+                            accent: item.$4,
                           ),
                         ),
                       )
@@ -807,58 +838,3 @@ String _summaryLabel(AppLocalizations s, String key) => switch (key) {
   'period_movement' => s.periodMovement,
   _ => key,
 };
-
-class _DateTile extends StatelessWidget {
-  const _DateTile({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-  final String label;
-  final DateTime? value;
-  final ValueChanged<DateTime> onChanged;
-  @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(label),
-    subtitle: Text(
-      value == null
-          ? AppLocalizations.of(context).allDates
-          : DateFormat.yMd(
-              Localizations.localeOf(context).toLanguageTag(),
-            ).format(value!),
-    ),
-    trailing: const Icon(Icons.calendar_today),
-    onTap: () async {
-      final selected = await showDatePicker(
-        context: context,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-        initialDate: value ?? DateTime.now(),
-      );
-      if (selected != null) onChanged(selected);
-    },
-  );
-}
-
-class _StateMessage extends StatelessWidget {
-  const _StateMessage({required this.message, this.action, this.onTap});
-  final String message;
-  final String? action;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          if (action != null && onTap != null) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onTap, child: Text(action!)),
-          ],
-        ],
-      ),
-    ),
-  );
-}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:maritime_frontend/core/theme/app_theme.dart';
 import 'package:maritime_frontend/features/dashboard/application/dashboard_controller.dart';
 import 'package:maritime_frontend/features/dashboard/data/dashboard_repository.dart';
 import 'package:maritime_frontend/features/dashboard/domain/dashboard_models.dart';
@@ -8,125 +9,70 @@ import 'package:maritime_frontend/features/dashboard/presentation/dashboard_scre
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 void main() {
-  testWidgets('dashboard renders API values, summaries, and refresh control', (
-    tester,
-  ) async {
-    final source = FakeDashboardSource(sampleData);
-    final controller = DashboardController(source);
-    await tester.pumpWidget(_Harness(controller: controller));
-    await tester.pumpAndSettle();
+  testWidgets('home shows all requested shortcuts', (tester) async {
+    int? selected;
+    await tester.pumpWidget(_Harness(onNavigate: (value) => selected = value));
 
-    expect(find.text('Espèces attendues'), findsOneWidget);
-    expect(find.textContaining('1 234,50'), findsOneWidget);
+    for (final label in [
+      'Navires',
+      'Clients',
+      'Propriétaires',
+      'Partenaires',
+      'Statistiques',
+      'Historique des transactions',
+      'Dettes et prêts',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(find.byType(Card), findsNWidgets(7));
+    expect(find.text('Espèces attendues'), findsNothing);
 
-    await tester.tap(find.byIcon(Icons.refresh));
-    await tester.pumpAndSettle();
-    expect(source.calls, 2);
-
-    await tester.scrollUntilVisible(find.text('Navire Horizon'), 500);
-    expect(find.text('Navire Horizon'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Le client nous doit'), 500);
-    expect(find.text('Le client nous doit'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Nous devons au partenaire'),
-      500,
-    );
-    expect(find.text('Nous devons au partenaire'), findsOneWidget);
-    expect(find.byType(RefreshIndicator), findsOneWidget);
-  });
-
-  testWidgets('dashboard exposes translated empty states', (tester) async {
-    final empty = DashboardData(
-      metrics: sampleData.metrics,
-      ships: const [],
-      clients: const [],
-      partners: const [],
-    );
-    await tester.pumpWidget(
-      _Harness(controller: DashboardController(FakeDashboardSource(empty))),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(find.text('Aucun navire à afficher.'), 500);
-    expect(find.text('Aucun navire à afficher.'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Aucun client à afficher.'), 500);
-    expect(find.text('Aucun client à afficher.'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Aucun partenaire à afficher.'),
-      500,
-    );
-    expect(find.text('Aucun partenaire à afficher.'), findsOneWidget);
-  });
-
-  testWidgets('dashboard exposes a localized error and retry state', (
-    tester,
-  ) async {
-    final source = FailingDashboardSource();
-    await tester.pumpWidget(_Harness(controller: DashboardController(source)));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Impossible de charger le tableau de bord.'),
-      findsOneWidget,
-    );
-    expect(find.text('Réessayer'), findsOneWidget);
+    await tester.tap(find.text('Navires'));
+    expect(selected, 2);
+    await tester.tap(find.text('Statistiques'));
+    expect(selected, 1);
   });
 }
 
-const sampleData = DashboardData(
-  metrics: DashboardMetrics(
-    expectedCash: 1234.50,
-    peopleOweUs: 400,
-    weOwePeople: 125,
-    netPosition: 1509.50,
-    totalRevenue: 2000,
-    totalExpenses: 500,
-    profitLoss: 1500,
-  ),
-  ships: [
-    ShipSummary(
-      name: 'Navire Horizon',
-      revenue: 2000,
-      expenses: 500,
-      profitLoss: 1500,
+class _EmptySource implements DashboardDataSource {
+  @override
+  Future<DashboardData> fetchDashboard() async => const DashboardData(
+    metrics: DashboardMetrics(
+      expectedCash: 0,
+      peopleOweUs: 0,
+      weOwePeople: 0,
+      netPosition: 0,
+      totalRevenue: 0,
+      totalExpenses: 0,
+      profitLoss: 0,
     ),
-  ],
-  clients: [ClientSummary(name: 'Client Débit', balance: 125)],
-  partners: [PartnerSummary(name: 'Partenaire Crédit', balance: -75)],
-);
-
-class FakeDashboardSource implements DashboardDataSource {
-  FakeDashboardSource(this.data);
-  final DashboardData data;
-  int calls = 0;
-  @override
-  Future<DashboardData> fetchDashboard() async {
-    calls++;
-    return data;
-  }
-}
-
-class FailingDashboardSource implements DashboardDataSource {
-  @override
-  Future<DashboardData> fetchDashboard() => throw Exception();
+    ships: [],
+    clients: [],
+    partners: [],
+    positions: [],
+  );
 }
 
 class _Harness extends StatelessWidget {
-  const _Harness({required this.controller});
-  final DashboardController controller;
+  const _Harness({required this.onNavigate});
+  final ValueChanged<int> onNavigate;
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      locale: const Locale('fr'),
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: Scaffold(body: DashboardScreen(controller: controller)),
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+    theme: AppTheme.light(),
+    locale: const Locale('fr'),
+    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    home: Scaffold(
+      body: DashboardScreen(
+        controller: DashboardController(_EmptySource()),
+        onNavigate: onNavigate,
+      ),
+    ),
+  );
 }

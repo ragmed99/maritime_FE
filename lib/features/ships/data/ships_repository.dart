@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../core/network/api_client.dart';
 import '../domain/ship_models.dart';
 
@@ -19,16 +21,67 @@ class ShipsRepository {
   Future<List<OwnerOption>> owners() async =>
       (await _rows('owners/')).map(OwnerOption.fromJson).toList();
 
+  Future<OwnerOption> createOwner({
+    required String name,
+    required String phone,
+  }) async {
+    final response = await _api.post<Map<String, dynamic>>(
+      'owners/',
+      data: {'name': name, 'phone': phone},
+    );
+    return OwnerOption.fromJson(response.data!);
+  }
+
   Future<List<ClientOption>> clients() async =>
       (await _rows('clients/')).map(ClientOption.fromJson).toList();
+
+  Future<ClientOption> createClient(String name) async {
+    final response = await _api.post<Map<String, dynamic>>(
+      'clients/',
+      data: {'name': name, 'phone': ''},
+    );
+    return ClientOption.fromJson(response.data!);
+  }
 
   Future<List<ShipRecord>> ships() async {
     final results = await Future.wait([_rows('ships/'), _rows('owners/')]);
     final ownerNames = {
       for (final row in results[1]) row['id'] as String: row['name'] as String,
     };
-    return results[0]
+    final records = results[0]
         .map((row) => ShipRecord.fromJson(row, ownerNames[row['owner']] ?? ''))
+        .toList();
+    return Future.wait(
+      records.map((ship) async {
+        final financials = await shipFinancials(ship.id);
+        return ShipRecord(
+          id: ship.id,
+          name: ship.name,
+          ownerId: ship.ownerId,
+          ownerName: ship.ownerName,
+          financials: financials,
+        );
+      }),
+    );
+  }
+
+  Future<List<ShipRecord>> pointeurShips() async => (await _rows('ships/'))
+      .map(
+        (row) => ShipRecord.fromJson(row, row['owner_name'] as String? ?? ''),
+      )
+      .toList();
+
+  Future<List<TripRecord>> pointeurTrips(String shipId) async =>
+      (await _rows('trips/'))
+          .where((row) => row['ship'] == shipId)
+          .map((row) => TripRecord.fromJson(row))
+          .toList();
+
+  Future<List<PointeurPurchase>> pointeurPurchases(String tripId) async {
+    final response = await _api.get<List<dynamic>>('trips/$tripId/purchases/');
+    return response.data!
+        .cast<Map<String, dynamic>>()
+        .map(PointeurPurchase.fromJson)
         .toList();
   }
 
@@ -40,17 +93,20 @@ class ShipsRepository {
     (await _api.get<Map<String, dynamic>>('trips/$tripId/financials/')).data!,
   );
 
+  Future<Uint8List> tripDetailsPdf(String tripId, String language) async =>
+      Uint8List.fromList(
+        await _api.download(
+          'trips/$tripId/details/pdf/',
+          query: {'lang': language},
+        ),
+      );
+
   Future<void> saveShip({
     String? id,
     required String name,
-    required String registrationNumber,
     required String ownerId,
   }) async {
-    final data = <String, dynamic>{
-      'name': name,
-      'registration_number': registrationNumber,
-      'owner': ownerId,
-    };
+    final data = <String, dynamic>{'name': name, 'owner': ownerId};
     if (id == null) {
       await _api.post('ships/', data: data);
     } else {
@@ -77,16 +133,12 @@ class ShipsRepository {
     String? id,
     required String shipId,
     required DateTime departureDate,
-    List<TripFinancialEntry> expenses = const [],
-    List<TripFinancialEntry> revenues = const [],
   }) async {
     final data = <String, dynamic>{
       'ship': shipId,
       'departure_date': _date(departureDate),
     };
     if (id == null) {
-      data['expenses'] = expenses.map((entry) => entry.toJson()).toList();
-      data['revenues'] = revenues.map((entry) => entry.toJson()).toList();
       await _api.post('trips/', data: data);
     } else {
       await _api.patch('trips/$id/', data: data);
@@ -116,6 +168,8 @@ class ShipsRepository {
     required double amount,
     required DateTime date,
     required String description,
+    double? quantity,
+    double? unitPrice,
     String? clientId,
   }) async {
     await _api.post(
@@ -128,9 +182,65 @@ class ShipsRepository {
         'amount': amount.toStringAsFixed(2),
         'transaction_date': _date(date),
         'description': description,
+        if (quantity != null) 'quantity': quantity.toStringAsFixed(2),
+        if (unitPrice != null) 'unit_price': unitPrice.toStringAsFixed(2),
       },
     );
   }
+
+  Future<void> addPendingPurchase({
+    required String shipId,
+    required String tripId,
+    required String clientId,
+    required String description,
+    required double quantity,
+    required DateTime date,
+  }) => addTransaction(
+    type: 'CLIENT_PURCHASE',
+    shipId: shipId,
+    tripId: tripId,
+    clientId: clientId,
+    description: description,
+    quantity: quantity,
+    amount: 0,
+    date: date,
+  );
+
+  Future<void> updatePendingPurchase({
+    required String transactionId,
+    required String clientId,
+    required String description,
+    required double quantity,
+  }) => _api.patch(
+    'transactions/$transactionId/',
+    data: {
+      'client': clientId,
+      'description': description,
+      'quantity': quantity.toStringAsFixed(2),
+    },
+  );
+
+  Future<void> setPurchaseUnitPrice(String transactionId, double unitPrice) =>
+      _api.patch(
+        'transactions/$transactionId/',
+        data: {'unit_price': unitPrice.toStringAsFixed(2)},
+      );
+
+  Future<void> updatePurchase(
+    String id, {
+    required double quantity,
+    required double unitPrice,
+    required String description,
+  }) => _api.patch(
+    'transactions/$id/',
+    data: {
+      'description': description,
+      'quantity': quantity.toStringAsFixed(2),
+      'unit_price': unitPrice.toStringAsFixed(2),
+    },
+  );
+
+  Future<void> deleteTransaction(String id) => _api.delete('transactions/$id/');
 
   String _date(DateTime value) => value.toIso8601String().split('T').first;
 }

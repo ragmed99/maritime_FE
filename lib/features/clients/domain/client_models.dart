@@ -6,6 +6,11 @@ class ClientRecord {
     required this.id,
     required this.name,
     required this.phone,
+    this.position = const AccountPosition(
+      theyOweUs: 0,
+      weOweThem: 0,
+      balance: 0,
+    ),
   });
   factory ClientRecord.fromJson(Map<String, dynamic> json) => ClientRecord(
     id: json['id'] as String,
@@ -15,6 +20,7 @@ class ClientRecord {
   final String id;
   final String name;
   final String phone;
+  final AccountPosition position;
 }
 
 class RelationOption {
@@ -34,6 +40,7 @@ class ClientTransactionRow {
     this.ship,
     this.trip,
     this.recordedBy,
+    this.paymentMethod,
   });
   factory ClientTransactionRow.fromJson(
     Map<String, dynamic> json,
@@ -48,6 +55,7 @@ class ClientTransactionRow {
     trip: (json['trip'] as Map<String, dynamic>?)?['departure_date'] as String?,
     recordedBy:
         (json['created_by'] as Map<String, dynamic>?)?['username'] as String?,
+    paymentMethod: json['payment_method'] as String?,
   );
   final String id;
   final String type;
@@ -58,6 +66,7 @@ class ClientTransactionRow {
   final String? ship;
   final String? trip;
   final String? recordedBy;
+  final String? paymentMethod;
 }
 
 class ClientStatementData {

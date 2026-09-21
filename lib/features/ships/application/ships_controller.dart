@@ -17,6 +17,12 @@ class ShipsController extends ChangeNotifier {
       .where((ship) => ship.name.toLowerCase().contains(query.toLowerCase()))
       .toList();
 
+  Financials get overallFinancials => Financials(
+    revenue: ships.fold(0, (sum, ship) => sum + ship.financials.revenue),
+    expenses: ships.fold(0, (sum, ship) => sum + ship.financials.expenses),
+    profit: ships.fold(0, (sum, ship) => sum + ship.financials.profit),
+  );
+
   Future<void> load() async {
     status = LoadStatus.loading;
     notifyListeners();
@@ -44,16 +50,9 @@ class ShipsController extends ChangeNotifier {
   Future<bool> saveShip({
     String? id,
     required String name,
-    required String registration,
     required String ownerId,
-  }) => _mutate(
-    () => repository.saveShip(
-      id: id,
-      name: name,
-      registrationNumber: registration,
-      ownerId: ownerId,
-    ),
-  );
+  }) =>
+      _mutate(() => repository.saveShip(id: id, name: name, ownerId: ownerId));
   Future<bool> deleteShip(String id) =>
       _mutate(() => repository.deleteShip(id));
 

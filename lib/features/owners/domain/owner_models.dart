@@ -24,6 +24,7 @@ class OwnerTransaction {
     required this.date,
     required this.time,
     required this.description,
+    this.shipId,
     this.recordedBy,
   });
   factory OwnerTransaction.fromJson(Map<String, dynamic> json) =>
@@ -34,6 +35,7 @@ class OwnerTransaction {
         date: DateTime.parse(json['transaction_date'] as String),
         time: DateTime.parse(json['created_at'] as String),
         description: json['description'] as String? ?? '',
+        shipId: json['ship'] as String?,
         recordedBy:
             (json['created_by'] as Map<String, dynamic>?)?['username']
                 as String?,
@@ -44,6 +46,7 @@ class OwnerTransaction {
   final DateTime date;
   final DateTime time;
   final String description;
+  final String? shipId;
   final String? recordedBy;
 }
 
@@ -51,16 +54,17 @@ class OwnerShip {
   const OwnerShip({
     required this.id,
     required this.name,
-    required this.registrationNumber,
+    required this.outcome,
   });
 
-  factory OwnerShip.fromJson(Map<String, dynamic> json) => OwnerShip(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    registrationNumber: json['registration_number'] as String? ?? '',
-  );
+  factory OwnerShip.fromJson(Map<String, dynamic> json, {double outcome = 0}) =>
+      OwnerShip(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        outcome: outcome,
+      );
 
   final String id;
   final String name;
-  final String registrationNumber;
+  final double outcome;
 }

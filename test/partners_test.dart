@@ -5,6 +5,7 @@ import 'package:maritime_frontend/core/config/app_environment.dart';
 import 'package:maritime_frontend/core/network/api_client.dart';
 import 'package:maritime_frontend/core/models/account_position.dart';
 import 'package:maritime_frontend/core/storage/token_storage.dart';
+import 'package:maritime_frontend/core/theme/app_theme.dart';
 import 'package:maritime_frontend/features/partners/application/partners_controller.dart';
 import 'package:maritime_frontend/features/partners/data/partners_repository.dart';
 import 'package:maritime_frontend/features/partners/domain/partner_models.dart';
@@ -59,14 +60,14 @@ void main() {
         value: AccountPosition(theyOweUs: 50, weOweThem: 0, balance: 50),
       ),
     );
-    expect(find.text('Le partenaire nous doit'), findsOneWidget);
+    expect(find.text('Débit'), findsWidgets);
 
     await tester.pumpWidget(
       const _BalanceHarness(
         value: AccountPosition(theyOweUs: 0, weOweThem: 50, balance: -50),
       ),
     );
-    expect(find.text('Nous devons au partenaire'), findsOneWidget);
+    expect(find.text('Crédit'), findsWidgets);
 
     await tester.pumpWidget(
       const _BalanceHarness(
@@ -111,6 +112,7 @@ class _BalanceHarness extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
+    theme: AppTheme.light(),
     locale: const Locale('fr'),
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: const [

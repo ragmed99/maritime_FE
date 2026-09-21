@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:maritime_frontend/core/config/app_environment.dart';
 import 'package:maritime_frontend/core/network/api_client.dart';
 import 'package:maritime_frontend/core/storage/token_storage.dart';
+import 'package:maritime_frontend/core/theme/app_theme.dart';
 import 'package:maritime_frontend/features/ships/application/ships_controller.dart';
 import 'package:maritime_frontend/features/ships/data/ships_repository.dart';
 import 'package:maritime_frontend/features/ships/domain/ship_models.dart';
@@ -18,6 +19,7 @@ void main() {
         'total_revenue': '1200.50',
         'total_expenses': '300.25',
         'profit': '900.25',
+        'has_unpriced_purchases': true,
       });
       final trip = Financials.trip({
         'revenue': '500.00',
@@ -27,6 +29,7 @@ void main() {
 
       expect(ship.revenue, 1200.50);
       expect(ship.profit, 900.25);
+      expect(ship.hasUnpricedPurchases, isTrue);
       expect(trip.expenses, 125);
       expect(trip.profit, 375);
     },
@@ -41,7 +44,6 @@ void main() {
       ShipRecord(
         id: 'ship-1',
         name: 'Al Bahri',
-        registrationNumber: 'MR-001',
         ownerId: 'owner-1',
         ownerName: 'Amina Shipping',
       ),
@@ -76,6 +78,7 @@ class _Harness extends StatelessWidget {
   final ShipsController controller;
   @override
   Widget build(BuildContext context) => MaterialApp(
+    theme: AppTheme.light(),
     locale: const Locale('fr'),
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: const [

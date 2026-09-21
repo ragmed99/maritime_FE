@@ -4,6 +4,7 @@ class CurrentUser {
     required this.username,
     required this.isStaff,
     required this.isActive,
+    this.role = 'USER',
     this.email = '',
   });
 
@@ -13,6 +14,7 @@ class CurrentUser {
     email: json['email'] as String? ?? '',
     isStaff: json['is_staff'] as bool? ?? false,
     isActive: json['is_active'] as bool? ?? true,
+    role: json['role'] as String? ?? 'USER',
   );
 
   final int id;
@@ -20,4 +22,7 @@ class CurrentUser {
   final String email;
   final bool isStaff;
   final bool isActive;
+  final String role;
+
+  bool get isPointeur => role == 'POINTEUR';
 }

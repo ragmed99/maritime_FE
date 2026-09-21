@@ -1,9 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
+import '../../../core/files/pdf_export.dart';
 import '../../../core/models/account_position.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_date_field.dart';
+import '../../../core/widgets/app_dialog_shell.dart';
+import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/initials_avatar.dart';
+import '../../../core/widgets/home_button.dart';
+import '../../../core/widgets/list_header_bar.dart';
+import '../../../core/widgets/money_text.dart';
+import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/status_pill.dart';
+import '../../../core/widgets/transaction_row_actions.dart'
+    show TransactionRowActions, confirmLinkedTransactionChange;
 import '../application/partners_controller.dart';
 import '../data/partners_repository.dart';
 import '../domain/partner_models.dart';
@@ -32,13 +44,13 @@ class _PartnersScreenState extends State<PartnersScreen> {
     builder: (context, _) {
       final s = AppLocalizations.of(context);
       if (widget.controller.status == PartnersStatus.loading) {
-        return const Center(child: CircularProgressIndicator());
+        return AppStateView.loading();
       }
       if (widget.controller.status == PartnersStatus.error) {
-        return _StateMessage(
+        return AppStateView.error(
           message: s.partnersLoadError,
-          action: s.retry,
-          onTap: widget.controller.load,
+          retryLabel: s.retry,
+          onRetry: widget.controller.load,
         );
       }
       final rows = widget.controller.filtered;
@@ -49,26 +61,12 @@ class _PartnersScreenState extends State<PartnersScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      s.partners,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: widget.controller.load,
-                    tooltip: s.refresh,
-                    icon: const Icon(Icons.refresh),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: _edit,
-                    icon: const Icon(Icons.add),
-                    label: Text(s.addPartner),
-                  ),
-                ],
+              ListHeaderBar(
+                title: s.partners,
+                onRefresh: widget.controller.load,
+                refreshTooltip: s.refresh,
+                onAdd: _edit,
+                addLabel: s.addPartner,
               ),
               const SizedBox(height: 18),
               TextField(
@@ -80,10 +78,11 @@ class _PartnersScreenState extends State<PartnersScreen> {
               ),
               const SizedBox(height: 18),
               if (rows.isEmpty)
-                _StateMessage(
+                AppStateView.empty(
                   message: widget.controller.query.isEmpty
                       ? s.noPartners
                       : s.noPartnerSearchResults,
+                  icon: Icons.handshake_outlined,
                 )
               else if (constraints.maxWidth >= 900)
                 _PartnerTable(
@@ -98,8 +97,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Card(
                       child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.handshake_outlined),
+                        leading: InitialsAvatar(
+                          partner.name,
+                          icon: Icons.handshake_outlined,
                         ),
                         title: Text(partner.name),
                         subtitle: Text(partner.phone),
@@ -127,15 +127,18 @@ class _PartnersScreenState extends State<PartnersScreen> {
     },
   );
 
-  void _open(PartnerRecord partner) => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => PartnerDetailsScreen(
-        partner: partner,
-        repository: widget.controller.repository,
+  Future<void> _open(PartnerRecord partner) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PartnerDetailsScreen(
+          partner: partner,
+          repository: widget.controller.repository,
+        ),
       ),
-    ),
-  );
+    );
+    await widget.controller.load();
+  }
 
   Future<void> _edit([PartnerRecord? partner]) async {
     final input = await showDialog<_PartnerInput>(
@@ -162,8 +165,9 @@ class _PartnersScreenState extends State<PartnersScreen> {
     final s = AppLocalizations.of(context);
     final yes = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(s.deletePartner),
+      builder: (_) => AppDialogShell(
+        title: s.deletePartner,
+        icon: Icons.delete_outline,
         content: Text(s.deleteConfirmation),
         actions: [
           TextButton(
@@ -274,6 +278,7 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
   DateTime? endDate;
   bool loading = true;
   bool failed = false;
+  bool sharingPdf = false;
 
   List<PartnerTransaction> get visibleTransactions => transactions.where((row) {
     final date = DateUtils.dateOnly(row.date);
@@ -319,6 +324,7 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
       appBar: AppBar(
         title: Text(widget.partner.name),
         actions: [
+          const HomeButton(),
           IconButton(
             onPressed: _load,
             tooltip: s.refresh,
@@ -327,17 +333,17 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? AppStateView.loading()
           : failed
-          ? _StateMessage(
+          ? AppStateView.error(
               message: s.partnerDetailsError,
-              action: s.retry,
-              onTap: _load,
+              retryLabel: s.retry,
+              onRetry: _load,
             )
           : RefreshIndicator(
               onRefresh: _load,
               child: LayoutBuilder(
-                builder: (context, constraints) => ListView(
+                builder: (context, _) => ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(24),
                   children: [
@@ -374,25 +380,40 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        FilledButton.icon(
-                          onPressed: () => _add('PARTNER_LOAN_RECEIVED'),
-                          icon: const Icon(Icons.south_west),
-                          label: Text(s.borrowFromPartner),
-                        ),
                         FilledButton.tonalIcon(
                           onPressed: () => _add('PARTNER_LOAN_GIVEN'),
-                          icon: const Icon(Icons.north_east),
-                          label: Text(s.lendToPartner),
+                          icon: const Icon(Icons.remove_circle_outline),
+                          label: Text(_partnerText(context, 'Débit', 'مدين')),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () => _add('PARTNER_LOAN_RECEIVED'),
+                          icon: const Icon(Icons.add_circle_outline),
+                          label: Text(_partnerText(context, 'Crédit', 'دائن')),
                         ),
                         OutlinedButton.icon(
-                          onPressed: () => _add('PARTNER_REPAYMENT_PAID'),
-                          icon: const Icon(Icons.reply),
-                          label: Text(s.repayPartner),
+                          onPressed: () => _add('PARTNER_SHARE'),
+                          icon: const Icon(Icons.percent),
+                          label: Text(
+                            _partnerText(
+                              context,
+                              'Pourcentage de part',
+                              'نسبة الشراكة',
+                            ),
+                          ),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: () => _add('PARTNER_REPAYMENT_RECEIVED'),
-                          icon: const Icon(Icons.call_received),
-                          label: Text(s.receiveRepayment),
+                        FilledButton.tonalIcon(
+                          onPressed: sharingPdf ? null : _sharePdf,
+                          icon: sharingPdf
+                              ? const SizedBox.square(
+                                  dimension: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.picture_as_pdf_outlined),
+                          label: Text(
+                            _partnerText(context, 'Générer PDF', 'إنشاء PDF'),
+                          ),
                         ),
                         OutlinedButton.icon(
                           onPressed: _filter,
@@ -402,18 +423,19 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
                       ],
                     ),
                     const SizedBox(height: 22),
-                    Text(
-                      s.partnerTransactions,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                    SectionHeader(s.partnerTransactions),
                     const SizedBox(height: 12),
                     if (visibleTransactions.isEmpty)
-                      _StateMessage(message: s.noPartnerTransactions)
+                      AppStateView.empty(
+                        message: s.noPartnerTransactions,
+                        icon: Icons.receipt_long_outlined,
+                      )
                     else
                       _Transactions(
                         rows: visibleTransactions,
-                        desktop: constraints.maxWidth >= 900,
                         locale: locale,
+                        onEdit: _editTransaction,
+                        onDelete: _deleteTransaction,
                       ),
                   ],
                 ),
@@ -435,6 +457,35 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
     }
   }
 
+  Future<void> _sharePdf() async {
+    setState(() => sharingPdf = true);
+    try {
+      final bytes = await widget.repository.statementPdf(
+        widget.partner.id,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      final savedPath = await exportPdf(
+        bytes: bytes,
+        filename: 'partner-${widget.partner.name}.pdf',
+        title: widget.partner.name,
+      );
+      if (mounted && savedPath != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('PDF: $savedPath')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).pdfError)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => sharingPdf = false);
+    }
+  }
+
   Future<void> _add(String type) async {
     final input = await showDialog<_TransactionInput>(
       context: context,
@@ -444,7 +495,8 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
     try {
       await widget.repository.addTransaction(
         partnerId: widget.partner.id,
-        type: type,
+        // A calculated share is a credit on the partner's account.
+        type: type == 'PARTNER_SHARE' ? 'PARTNER_LOAN_RECEIVED' : type,
         amount: input.amount,
         date: input.date,
         description: input.description,
@@ -454,6 +506,68 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context).saveError)),
+        );
+      }
+    }
+  }
+
+  Future<void> _editTransaction(PartnerTransaction row) async {
+    final input = await showDialog<_TransactionInput>(
+      context: context,
+      builder: (_) => _TransactionDialog(type: row.type, transaction: row),
+    );
+    if (input == null || !mounted) return;
+    if (!await confirmLinkedTransactionChange(context, deleting: false)) {
+      return;
+    }
+    try {
+      await widget.repository.updateTransaction(
+        id: row.id,
+        amount: input.amount,
+        date: row.date,
+        description: input.description,
+      );
+      await _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).saveError)),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteTransaction(PartnerTransaction row) async {
+    final s = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(s.deleteTransaction),
+        content: Text(
+          '${s.deleteTransactionConfirmation}\n\nCette action modifiera également les comptes liés.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(s.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(s.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await widget.repository.deleteTransaction(row.id);
+      await _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).transactionDeleteError),
+          ),
         );
       }
     }
@@ -468,42 +582,55 @@ class PartnerBalance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final money = context.moneyColors;
+    final locale = Localizations.localeOf(context).toLanguageTag();
     final color = value.theyOweUs > 0
-        ? Colors.red.shade700
+        ? money.negative
         : value.weOweThem > 0
-        ? Colors.green.shade700
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+        ? money.positive
+        : money.neutral;
     final label = value.theyOweUs > 0
-        ? s.partnerOwesUs
+        ? _partnerText(context, 'Débit', 'مدين')
         : value.weOweThem > 0
-        ? s.weOwePartner
+        ? _partnerText(context, 'Crédit', 'دائن')
         : s.balanced;
     return SizedBox(
       width: 280,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${s.theyOweUs}: ${formatMru(value.theyOweUs, Localizations.localeOf(context).toLanguageTag())}',
-            style: TextStyle(color: Colors.red.shade700),
+          Wrap(
+            children: [
+              Text('${_partnerText(context, 'Débit', 'مدين')}: '),
+              MoneyText(
+                value.theyOweUs,
+                locale: locale,
+                style: TextStyle(color: money.negative),
+              ),
+            ],
           ),
-          Text(
-            '${s.weOweThem}: ${formatMru(value.weOweThem, Localizations.localeOf(context).toLanguageTag())}',
-            style: TextStyle(color: Colors.green.shade700),
+          Wrap(
+            children: [
+              Text('${_partnerText(context, 'Crédit', 'دائن')}: '),
+              MoneyText(
+                value.weOweThem,
+                locale: locale,
+                style: TextStyle(color: money.positive),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(s.currentBalance),
-          Text(
-            formatMru(
-              value.balance.abs(),
-              Localizations.localeOf(context).toLanguageTag(),
-            ),
+          MoneyText(
+            value.balance.abs(),
+            locale: locale,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: color,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          Text(label, style: TextStyle(color: color)),
+          const SizedBox(height: 4),
+          StatusPill(label, color: color),
         ],
       ),
     );
@@ -513,73 +640,187 @@ class PartnerBalance extends StatelessWidget {
 class _Transactions extends StatelessWidget {
   const _Transactions({
     required this.rows,
-    required this.desktop,
     required this.locale,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   final List<PartnerTransaction> rows;
-  final bool desktop;
   final String locale;
+  final ValueChanged<PartnerTransaction> onEdit;
+  final ValueChanged<PartnerTransaction> onDelete;
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final money = context.moneyColors;
     String label(String type) => switch (type) {
-      'PARTNER_LOAN_RECEIVED' => s.loanReceived,
-      'PARTNER_LOAN_GIVEN' => s.loanGiven,
-      'PARTNER_REPAYMENT_PAID' => s.repaymentPaid,
-      _ => s.repaymentReceived,
+      'PARTNER_LOAN_RECEIVED' ||
+      'PARTNER_REPAYMENT_RECEIVED' => _partnerText(context, 'Crédit', 'دائن'),
+      _ => _partnerText(context, 'Débit', 'مدين'),
     };
-    String when(PartnerTransaction row) =>
-        '${DateFormat.yMd(locale).format(row.date)} ${DateFormat.Hm(locale).format(row.time.toLocal())}';
-    if (!desktop) {
+    bool isCredit(String type) =>
+        type == 'PARTNER_LOAN_RECEIVED' || type == 'PARTNER_REPAYMENT_RECEIVED';
+    Color tint(String type) => switch (type) {
+      'PARTNER_LOAN_RECEIVED' || 'PARTNER_REPAYMENT_RECEIVED' => money.positive,
+      _ => money.negative,
+    };
+    final credit = rows
+        .where((row) => isCredit(row.type))
+        .fold<double>(0, (sum, row) => sum + row.amount);
+    final debit = rows
+        .where((row) => !isCredit(row.type))
+        .fold<double>(0, (sum, row) => sum + row.amount);
+    final signedTotal = credit - debit;
+    final total = signedTotal.abs();
+    final totalColor = signedTotal > 0
+        ? money.positive
+        : signedTotal < 0
+        ? money.negative
+        : money.neutral;
+
+    if (MediaQuery.sizeOf(context).width < 700) {
       return Column(
-        children: rows
-            .map(
-              (row) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card(
-                  child: ListTile(
-                    title: Text(label(row.type)),
-                    subtitle: Text(
-                      '${when(row)}${row.description.isEmpty ? '' : '\n${row.description}'}${row.recordedBy == null ? '' : '\n${s.recordedBy}: ${row.recordedBy}'}',
-                    ),
-                    trailing: Text(formatMru(row.amount, locale)),
+        children: [
+          ...rows.map(
+            (row) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(
+                  row.description.isEmpty ? label(row.type) : row.description,
+                ),
+                subtitle: MoneyText(
+                  row.amount,
+                  locale: locale,
+                  style: TextStyle(
+                    color: tint(row.type),
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                trailing: TransactionRowActions(
+                  onEdit: () => onEdit(row),
+                  onDelete: () => onDelete(row),
+                ),
               ),
-            )
-            .toList(),
+            ),
+          ),
+          Card(
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            child: ListTile(
+              title: Text(
+                s.total,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              trailing: MoneyText(
+                total,
+                locale: locale,
+                style: TextStyle(
+                  color: totalColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
+
     return Card(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: [
-            s.dateTime,
-            s.transactionType,
-            s.description,
-            s.recordedBy,
-            s.amountMru,
-          ].map((text) => DataColumn(label: Text(text))).toList(),
-          rows: rows
-              .map(
-                (row) => DataRow(
-                  cells: [
-                    DataCell(Text(when(row))),
-                    DataCell(Text(label(row.type))),
-                    DataCell(Text(row.description)),
-                    DataCell(Text(row.recordedBy ?? '—')),
-                    DataCell(Text(formatMru(row.amount, locale))),
-                  ],
+        child: SizedBox(
+          width: 720,
+          child: Table(
+            border: TableBorder.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            columnWidths: const {
+              0: FlexColumnWidth(2),
+              1: FlexColumnWidth(1.2),
+              2: FixedColumnWidth(100),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              _partnerRow(
+                context,
+                description: s.description,
+                amount: s.amount,
+                actions: const SizedBox.shrink(),
+                bold: true,
+                background: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
+              ),
+              ...rows.map(
+                (row) => _partnerRow(
+                  context,
+                  description: row.description.isEmpty
+                      ? label(row.type)
+                      : row.description,
+                  amount: formatMru(row.amount, locale),
+                  amountColor: tint(row.type),
+                  actions: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        tooltip: s.edit,
+                        onPressed: () => onEdit(row),
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                      ),
+                      IconButton(
+                        tooltip: s.delete,
+                        onPressed: () => onDelete(row),
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                      ),
+                    ],
+                  ),
                 ),
-              )
-              .toList(),
+              ),
+              _partnerRow(
+                context,
+                description: s.total,
+                amount: formatMru(total, locale),
+                actions: const SizedBox.shrink(),
+                bold: true,
+                amountColor: totalColor,
+                background: Theme.of(context).colorScheme.surfaceContainerHigh,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  TableRow _partnerRow(
+    BuildContext context, {
+    required String description,
+    required String amount,
+    required Widget actions,
+    bool bold = false,
+    Color? amountColor,
+    Color? background,
+  }) => TableRow(
+    decoration: background == null ? null : BoxDecoration(color: background),
+    children: [
+      _partnerCell(description, bold: bold),
+      _partnerCell(amount, bold: bold, color: amountColor),
+      actions,
+    ],
+  );
+
+  Widget _partnerCell(String value, {bool bold = false, Color? color}) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Text(
+          value,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: color,
+            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      );
 }
 
 class _PartnerInput {
@@ -611,33 +852,31 @@ class _PartnerDialogState extends State<_PartnerDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    return AlertDialog(
-      title: Text(widget.partner == null ? s.addPartner : s.editPartner),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              decoration: InputDecoration(labelText: s.name),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: phone,
-              decoration: InputDecoration(labelText: s.phone),
-              keyboardType: TextInputType.phone,
-            ),
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+    return AppDialogShell(
+      title: widget.partner == null ? s.addPartner : s.editPartner,
+      icon: Icons.handshake_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: name,
+            decoration: InputDecoration(labelText: s.name),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: phone,
+            decoration: InputDecoration(labelText: s.phone),
+            keyboardType: TextInputType.phone,
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
       actions: [
         TextButton(
@@ -670,22 +909,28 @@ class _TransactionInput {
 }
 
 class _TransactionDialog extends StatefulWidget {
-  const _TransactionDialog({required this.type});
+  const _TransactionDialog({required this.type, this.transaction});
   final String type;
+  final PartnerTransaction? transaction;
 
   @override
   State<_TransactionDialog> createState() => _TransactionDialogState();
 }
 
 class _TransactionDialogState extends State<_TransactionDialog> {
-  final amount = TextEditingController();
-  final description = TextEditingController();
-  DateTime date = DateTime.now();
+  late final amount = TextEditingController(
+    text: widget.transaction?.amount.toStringAsFixed(2),
+  );
+  final percentage = TextEditingController();
+  late final description = TextEditingController(
+    text: widget.transaction?.description,
+  );
   String? error;
 
   @override
   void dispose() {
     amount.dispose();
+    percentage.dispose();
     description.dispose();
     super.dispose();
   }
@@ -693,53 +938,68 @@ class _TransactionDialogState extends State<_TransactionDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final locale = Localizations.localeOf(context).toLanguageTag();
-    final title = switch (widget.type) {
-      'PARTNER_LOAN_RECEIVED' => s.borrowFromPartner,
-      'PARTNER_LOAN_GIVEN' => s.lendToPartner,
-      'PARTNER_REPAYMENT_PAID' => s.repayPartner,
-      _ => s.receiveRepayment,
-    };
-    return AlertDialog(
-      title: Text(title),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    final isShare = widget.type == 'PARTNER_SHARE';
+    final title = widget.type == 'PARTNER_LOAN_RECEIVED'
+        ? _partnerText(context, 'Crédit', 'دائن')
+        : widget.type == 'PARTNER_LOAN_GIVEN'
+        ? _partnerText(context, 'Débit', 'مدين')
+        : _partnerText(context, 'Pourcentage de part', 'نسبة الشراكة');
+    return AppDialogShell(
+      title: title,
+      icon: Icons.payments_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: amount,
+            decoration: InputDecoration(
+              labelText: isShare
+                  ? _partnerText(
+                      context,
+                      'Montant de base (MRU)',
+                      'المبلغ الأساسي (MRU)',
+                    )
+                  : s.amountMru,
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          if (isShare) ...[
+            const SizedBox(height: 10),
             TextField(
-              controller: amount,
-              decoration: InputDecoration(labelText: s.amountMru),
+              controller: percentage,
+              decoration: InputDecoration(
+                labelText: _partnerText(
+                  context,
+                  'Pourcentage (%)',
+                  'النسبة (%)',
+                ),
+                suffixText: '%',
+              ),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: description,
-              decoration: InputDecoration(labelText: s.description),
+          ],
+          const SizedBox(height: 10),
+          TextField(
+            controller: description,
+            decoration: InputDecoration(
+              labelText: _partnerText(
+                context,
+                'Description (facultative)',
+                'الوصف (اختياري)',
+              ),
             ),
-            ListTile(
-              title: Text(s.date),
-              subtitle: Text(DateFormat.yMd(locale).format(date)),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                final selected = await showDatePicker(
-                  context: context,
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                  initialDate: date,
-                );
-                if (selected != null) setState(() => date = selected);
-              },
-            ),
-            if (error != null)
-              Text(
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
                 error!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
       actions: [
         TextButton(
@@ -748,14 +1008,34 @@ class _TransactionDialogState extends State<_TransactionDialog> {
         ),
         FilledButton(
           onPressed: () {
-            final value = double.tryParse(amount.text.replaceAll(',', '.'));
-            if (value == null || value <= 0) {
+            final baseValue = double.tryParse(amount.text.replaceAll(',', '.'));
+            final percentValue = double.tryParse(
+              percentage.text.replaceAll(',', '.'),
+            );
+            final value = isShare && baseValue != null && percentValue != null
+                ? baseValue * percentValue / 100
+                : baseValue;
+            if (baseValue == null ||
+                baseValue <= 0 ||
+                value == null ||
+                value <= 0 ||
+                (isShare &&
+                    (percentValue == null ||
+                        percentValue <= 0 ||
+                        percentValue > 100))) {
               setState(() => error = s.validAmountRequired);
               return;
             }
+            final calculation = isShare
+                ? '${_partnerText(context, 'Part', 'حصة')} ${percentValue!.toStringAsFixed(2)}% × ${baseValue.toStringAsFixed(2)} MRU'
+                : '';
+            final note = description.text.trim();
+            final savedDescription = isShare
+                ? '$calculation${note.isEmpty ? '' : ' — $note'}'
+                : note;
             Navigator.pop(
               context,
-              _TransactionInput(value, date, description.text.trim()),
+              _TransactionInput(value, DateTime.now(), savedDescription),
             );
           },
           child: Text(s.save),
@@ -764,6 +1044,9 @@ class _TransactionDialogState extends State<_TransactionDialog> {
     );
   }
 }
+
+String _partnerText(BuildContext context, String french, String arabic) =>
+    Localizations.localeOf(context).languageCode == 'ar' ? arabic : french;
 
 class _DateFilterDialog extends StatefulWidget {
   const _DateFilterDialog({required this.start, required this.end});
@@ -781,28 +1064,27 @@ class _DateFilterDialogState extends State<_DateFilterDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final locale = Localizations.localeOf(context).toLanguageTag();
-    return AlertDialog(
-      title: Text(s.filters),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _DateTile(
-              label: s.startDate,
-              value: start,
-              locale: locale,
-              onChanged: (value) => setState(() => start = value),
-            ),
-            _DateTile(
-              label: s.endDate,
-              value: end,
-              locale: locale,
-              onChanged: (value) => setState(() => end = value),
-            ),
-          ],
-        ),
+    return AppDialogShell(
+      title: s.filters,
+      icon: Icons.filter_alt_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppDateField(
+            label: s.startDate,
+            value: start,
+            placeholder: s.allDates,
+            onChanged: (value) => setState(() => start = value),
+          ),
+          const SizedBox(height: 10),
+          AppDateField(
+            label: s.endDate,
+            value: end,
+            placeholder: s.allDates,
+            firstDate: start,
+            onChanged: (value) => setState(() => end = value),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -819,61 +1101,4 @@ class _DateFilterDialogState extends State<_DateFilterDialog> {
       ],
     );
   }
-}
-
-class _DateTile extends StatelessWidget {
-  const _DateTile({
-    required this.label,
-    required this.value,
-    required this.locale,
-    required this.onChanged,
-  });
-  final String label;
-  final DateTime? value;
-  final String locale;
-  final ValueChanged<DateTime> onChanged;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(label),
-    subtitle: Text(
-      value == null
-          ? AppLocalizations.of(context).allDates
-          : DateFormat.yMd(locale).format(value!),
-    ),
-    trailing: const Icon(Icons.calendar_today),
-    onTap: () async {
-      final selected = await showDatePicker(
-        context: context,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-        initialDate: value ?? DateTime.now(),
-      );
-      if (selected != null) onChanged(selected);
-    },
-  );
-}
-
-class _StateMessage extends StatelessWidget {
-  const _StateMessage({required this.message, this.action, this.onTap});
-  final String message;
-  final String? action;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          if (action != null && onTap != null) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onTap, child: Text(action!)),
-          ],
-        ],
-      ),
-    ),
-  );
 }

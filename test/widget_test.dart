@@ -6,18 +6,18 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 void main() {
   testWidgets('French uses left-to-right layout', (tester) async {
     await tester.pumpWidget(const _LocalizedHarness(locale: Locale('fr')));
-    expect(find.text('TAR FISHING'), findsOneWidget);
+    expect(find.text('Tar Fishing'), findsOneWidget);
     expect(
-      Directionality.of(tester.element(find.text('TAR FISHING'))),
+      Directionality.of(tester.element(find.text('Tar Fishing'))),
       TextDirection.ltr,
     );
   });
 
   testWidgets('Arabic uses right-to-left layout', (tester) async {
     await tester.pumpWidget(const _LocalizedHarness(locale: Locale('ar')));
-    expect(find.text('TAR FISHING'), findsOneWidget);
+    expect(find.text('Tar Fishing'), findsOneWidget);
     expect(
-      Directionality.of(tester.element(find.text('TAR FISHING'))),
+      Directionality.of(tester.element(find.text('Tar Fishing'))),
       TextDirection.rtl,
     );
   });

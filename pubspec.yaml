@@ -1,5 +1,5 @@
 name: maritime_frontend
-description: "Maritime financial management client."
+description: "Tar Fishing financial management client."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -40,6 +40,10 @@ dependencies:
   flutter_secure_storage: ^10.0.0
   intl: ^0.20.2
   share_plus: ^12.0.1
+  google_fonts: ^8.2.1
+  connectivity_plus: ^7.3.1
+  sqlite3: ^3.5.2
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

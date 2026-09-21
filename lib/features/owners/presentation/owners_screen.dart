@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
-import '../../../core/formatters/money_formatter.dart';
 import '../../../core/models/account_position.dart';
+import '../../../core/files/pdf_export.dart';
+import '../../../core/formatters/money_formatter.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_date_field.dart';
+import '../../../core/widgets/app_dialog_shell.dart';
+import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/initials_avatar.dart';
+import '../../../core/widgets/home_button.dart';
+import '../../../core/widgets/list_header_bar.dart';
+import '../../../core/widgets/money_text.dart';
+import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/status_pill.dart';
+import '../../../core/widgets/transaction_row_actions.dart';
 import '../application/owners_controller.dart';
 import '../data/owners_repository.dart';
 import '../domain/owner_models.dart';
@@ -32,13 +43,13 @@ class _OwnersScreenState extends State<OwnersScreen> {
     builder: (context, _) {
       final s = AppLocalizations.of(context);
       if (widget.controller.status == OwnersStatus.loading) {
-        return const Center(child: CircularProgressIndicator());
+        return AppStateView.loading();
       }
       if (widget.controller.status == OwnersStatus.error) {
-        return _StateMessage(
+        return AppStateView.error(
           message: s.ownersLoadError,
-          action: s.retry,
-          onTap: widget.controller.load,
+          retryLabel: s.retry,
+          onRetry: widget.controller.load,
         );
       }
       final rows = widget.controller.filtered;
@@ -49,26 +60,12 @@ class _OwnersScreenState extends State<OwnersScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      s.owners,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: widget.controller.load,
-                    tooltip: s.refresh,
-                    icon: const Icon(Icons.refresh),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: _edit,
-                    icon: const Icon(Icons.add),
-                    label: Text(s.addOwner),
-                  ),
-                ],
+              ListHeaderBar(
+                title: s.owners,
+                onRefresh: widget.controller.load,
+                refreshTooltip: s.refresh,
+                onAdd: _edit,
+                addLabel: s.addOwner,
               ),
               const SizedBox(height: 18),
               TextField(
@@ -80,10 +77,11 @@ class _OwnersScreenState extends State<OwnersScreen> {
               ),
               const SizedBox(height: 18),
               if (rows.isEmpty)
-                _StateMessage(
+                AppStateView.empty(
                   message: widget.controller.query.isEmpty
                       ? s.noOwners
                       : s.noOwnerSearchResults,
+                  icon: Icons.badge_outlined,
                 )
               else if (constraints.maxWidth >= 900)
                 _OwnerTable(
@@ -98,8 +96,9 @@ class _OwnersScreenState extends State<OwnersScreen> {
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Card(
                       child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.handshake_outlined),
+                        leading: InitialsAvatar(
+                          owner.name,
+                          icon: Icons.badge_outlined,
                         ),
                         title: Text(owner.name),
                         subtitle: Text(owner.phone),
@@ -126,15 +125,18 @@ class _OwnersScreenState extends State<OwnersScreen> {
     },
   );
 
-  void _open(OwnerRecord owner) => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => OwnerDetailsScreen(
-        owner: owner,
-        repository: widget.controller.repository,
+  Future<void> _open(OwnerRecord owner) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerDetailsScreen(
+          owner: owner,
+          repository: widget.controller.repository,
+        ),
       ),
-    ),
-  );
+    );
+    await widget.controller.load();
+  }
 
   Future<void> _edit([OwnerRecord? owner]) async {
     final input = await showDialog<_OwnerInput>(
@@ -161,8 +163,9 @@ class _OwnersScreenState extends State<OwnersScreen> {
     final s = AppLocalizations.of(context);
     final yes = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(s.deleteOwner),
+      builder: (_) => AppDialogShell(
+        title: s.deleteOwner,
+        icon: Icons.delete_outline,
         content: Text(s.deleteConfirmation),
         actions: [
           TextButton(
@@ -274,6 +277,7 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
   DateTime? endDate;
   bool loading = true;
   bool failed = false;
+  bool sharingPdf = false;
 
   List<OwnerTransaction> get visibleTransactions => transactions.where((row) {
     final date = DateUtils.dateOnly(row.date);
@@ -321,6 +325,7 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
       appBar: AppBar(
         title: Text(widget.owner.name),
         actions: [
+          const HomeButton(),
           IconButton(
             onPressed: _load,
             tooltip: s.refresh,
@@ -329,12 +334,12 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? AppStateView.loading()
           : failed
-          ? _StateMessage(
+          ? AppStateView.error(
               message: s.ownerDetailsError,
-              action: s.retry,
-              onTap: _load,
+              retryLabel: s.retry,
+              onRetry: _load,
             )
           : RefreshIndicator(
               onRefresh: _load,
@@ -346,27 +351,28 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(18),
-                        child: Wrap(
-                          spacing: 30,
-                          runSpacing: 12,
+                        child: Row(
                           children: [
-                            SizedBox(
-                              width: 280,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.owner.name,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleLarge,
-                                  ),
-                                  if (widget.owner.phone.isNotEmpty)
-                                    Text('${s.phone}: ${widget.owner.phone}'),
-                                ],
+                            Expanded(
+                              child: Text(
+                                widget.owner.name,
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                             ),
-                            OwnerBalance(value: balance),
+                            MoneyText(
+                              balance.balance.abs(),
+                              locale: locale,
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: balance.balance > 0
+                                        ? context.moneyColors.positive
+                                        : balance.balance < 0
+                                        ? context.moneyColors.negative
+                                        : context.moneyColors.neutral,
+                                  ),
+                            ),
                           ],
                         ),
                       ),
@@ -384,44 +390,72 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
                         FilledButton.tonalIcon(
                           onPressed: () => _add('OWNER_WITHDRAWAL'),
                           icon: const Icon(Icons.payments_outlined),
-                          label: Text(s.addWithdrawal),
+                          label: Text(s.addExpense),
                         ),
                         OutlinedButton.icon(
                           onPressed: _filter,
                           icon: const Icon(Icons.date_range_outlined),
                           label: Text(s.filters),
                         ),
+                        FilledButton.tonalIcon(
+                          onPressed: sharingPdf ? null : _sharePdf,
+                          icon: sharingPdf
+                              ? const SizedBox.square(
+                                  dimension: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.picture_as_pdf_outlined),
+                          label: Text(s.downloadSharePdf),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 22),
-                    Text(
-                      s.ownerShips,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 12),
-                    if (ships.isEmpty)
-                      _StateMessage(message: s.noOwnerShips)
-                    else
-                      _Ships(rows: ships, desktop: constraints.maxWidth >= 900),
-                    const SizedBox(height: 22),
-                    Text(
-                      s.ownerTransactions,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                    SectionHeader(s.ownerTransactions),
                     const SizedBox(height: 12),
                     if (visibleTransactions.isEmpty)
-                      _StateMessage(message: s.noOwnerTransactions)
+                      AppStateView.empty(
+                        message: s.noOwnerTransactions,
+                        icon: Icons.receipt_long_outlined,
+                      )
                     else
-                      _Transactions(
+                      _OwnerAccountSheet(
                         rows: visibleTransactions,
-                        desktop: constraints.maxWidth >= 900,
+                        ships: ships,
                         locale: locale,
+                        onEdit: _editTransaction,
+                        onDelete: _deleteTransaction,
                       ),
                   ],
                 ),
               ),
             ),
     );
+  }
+
+  Future<void> _editTransaction(OwnerTransaction row) async {
+    final input = await showTransactionEditDialog(
+      context,
+      amount: row.amount,
+      description: row.description,
+    );
+    if (input == null || !mounted) return;
+    if (!await confirmLinkedTransactionChange(context, deleting: false)) {
+      return;
+    }
+    await widget.repository.updateTransaction(
+      row.id,
+      amount: input.amount,
+      description: input.description,
+    );
+    await _load();
+  }
+
+  Future<void> _deleteTransaction(OwnerTransaction row) async {
+    if (!await confirmLinkedTransactionChange(context, deleting: true)) return;
+    await widget.repository.deleteTransaction(row.id);
+    await _load();
   }
 
   Future<void> _filter() async {
@@ -434,6 +468,35 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
         startDate = result[0];
         endDate = result[1];
       });
+    }
+  }
+
+  Future<void> _sharePdf() async {
+    setState(() => sharingPdf = true);
+    try {
+      final bytes = await widget.repository.statementPdf(
+        widget.owner.id,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      final savedPath = await exportPdf(
+        bytes: bytes,
+        filename: 'owner-${widget.owner.name}.pdf',
+        title: widget.owner.name,
+      );
+      if (mounted && savedPath != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('PDF: $savedPath')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).pdfError)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => sharingPdf = false);
     }
   }
 
@@ -470,11 +533,13 @@ class OwnerBalance extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final money = context.moneyColors;
+    final locale = Localizations.localeOf(context).toLanguageTag();
     final color = value.theyOweUs > 0
-        ? Colors.red.shade700
+        ? money.negative
         : value.weOweThem > 0
-        ? Colors.green.shade700
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+        ? money.positive
+        : money.neutral;
     final label = value.theyOweUs > 0
         ? s.ownerOwesBusiness
         : value.weOweThem > 0
@@ -485,157 +550,265 @@ class OwnerBalance extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${s.theyOweUs}: ${formatMru(value.theyOweUs, Localizations.localeOf(context).toLanguageTag())}',
-            style: TextStyle(color: Colors.red.shade700),
+          Wrap(
+            children: [
+              Text('${s.theyOweUs}: '),
+              MoneyText(
+                value.theyOweUs,
+                locale: locale,
+                style: TextStyle(color: money.negative),
+              ),
+            ],
           ),
-          Text(
-            '${s.weOweThem}: ${formatMru(value.weOweThem, Localizations.localeOf(context).toLanguageTag())}',
-            style: TextStyle(color: Colors.green.shade700),
+          Wrap(
+            children: [
+              Text('${s.weOweThem}: '),
+              MoneyText(
+                value.weOweThem,
+                locale: locale,
+                style: TextStyle(color: money.positive),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(s.currentBalance),
-          Text(
-            formatMru(
-              value.balance.abs(),
-              Localizations.localeOf(context).toLanguageTag(),
-            ),
+          MoneyText(
+            value.balance.abs(),
+            locale: locale,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: color,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          Text(label, style: TextStyle(color: color)),
+          const SizedBox(height: 4),
+          StatusPill(label, color: color),
         ],
       ),
     );
   }
 }
 
-class _Ships extends StatelessWidget {
-  const _Ships({required this.rows, required this.desktop});
-
-  final List<OwnerShip> rows;
-  final bool desktop;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppLocalizations.of(context);
-    if (!desktop) {
-      return Column(
-        children: rows
-            .map(
-              (ship) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.directions_boat_outlined),
-                    title: Text(ship.name),
-                    subtitle: Text(
-                      '${s.registrationNumber}: ${ship.registrationNumber}',
-                    ),
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      );
-    }
-    return Card(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: [
-            s.shipName,
-            s.registrationNumber,
-          ].map((label) => DataColumn(label: Text(label))).toList(),
-          rows: rows
-              .map(
-                (ship) => DataRow(
-                  cells: [
-                    DataCell(Text(ship.name)),
-                    DataCell(Text(ship.registrationNumber)),
-                  ],
-                ),
-              )
-              .toList(),
-        ),
-      ),
-    );
-  }
-}
-
-class _Transactions extends StatelessWidget {
-  const _Transactions({
+class _OwnerAccountSheet extends StatelessWidget {
+  const _OwnerAccountSheet({
     required this.rows,
-    required this.desktop,
+    required this.ships,
     required this.locale,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   final List<OwnerTransaction> rows;
-  final bool desktop;
+  final List<OwnerShip> ships;
   final String locale;
+  final ValueChanged<OwnerTransaction> onEdit;
+  final ValueChanged<OwnerTransaction> onDelete;
 
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    String label(String type) => switch (type) {
-      'OWNER_DEPOSIT' => s.deposit,
-      'OWNER_WITHDRAWAL' => s.withdrawal,
-      'SHIP_REVENUE' => s.shipRevenue,
-      'SHIP_EXPENSE' => s.shipExpense,
-      _ => type,
-    };
-    String when(OwnerTransaction row) =>
-        '${DateFormat.yMd(locale).format(row.date)} ${DateFormat.Hm(locale).format(row.time.toLocal())}';
-    if (!desktop) {
-      return Column(
-        children: rows
-            .map(
-              (row) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card(
-                  child: ListTile(
-                    title: Text(label(row.type)),
-                    subtitle: Text(
-                      '${when(row)}${row.description.isEmpty ? '' : '\n${row.description}'}${row.recordedBy == null ? '' : '\n${s.recordedBy}: ${row.recordedBy}'}',
-                    ),
-                    trailing: Text(formatMru(row.amount, locale)),
-                  ),
-                ),
-              ),
-            )
-            .toList(),
+    final expenses = rows
+        .where(
+          (row) => row.type == 'OWNER_WITHDRAWAL' || row.type == 'SHIP_EXPENSE',
+        )
+        .toList();
+    final deposits = rows.where((row) => row.type == 'OWNER_DEPOSIT').toList();
+    final outcomes = rows
+        .where((row) => row.type == 'CLIENT_PURCHASE')
+        .toList();
+    final shipNames = {for (final ship in ships) ship.id: ship.name};
+    final totalExpenses = expenses.fold<double>(
+      0,
+      (sum, row) => sum + row.amount,
+    );
+    final totalDeposits = deposits.fold<double>(
+      0,
+      (sum, row) => sum + row.amount,
+    );
+    final totalOutcomes = outcomes.fold<double>(
+      0,
+      (sum, row) => sum + row.amount,
+    );
+    final totalIncome = totalDeposits + totalOutcomes;
+    final tableRows = <TableRow>[
+      _row(
+        context,
+        [s.expenses, s.amount],
+        bold: true,
+        background: Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
+    ];
+
+    for (final row in expenses) {
+      tableRows.add(
+        _row(context, [
+          row.description.isEmpty ? s.expense : row.description,
+          formatMru(row.amount, locale),
+        ], transaction: row),
       );
     }
+    tableRows.add(
+      _row(
+        context,
+        [s.totalExpenses, formatMru(totalExpenses, locale)],
+        bold: true,
+        background: const Color(0xFF12DDE4),
+      ),
+    );
+    tableRows.add(
+      _row(
+        context,
+        [s.revenues, s.amount],
+        bold: true,
+        background: Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
+    );
+    for (final row in deposits) {
+      tableRows.add(
+        _row(context, [
+          row.description.isEmpty ? s.deposit : row.description,
+          formatMru(row.amount, locale),
+        ]),
+      );
+    }
+    for (final row in outcomes) {
+      tableRows.add(
+        _row(context, [
+          shipNames[row.shipId] ?? '—',
+          formatMru(row.amount, locale),
+        ]),
+      );
+    }
+    tableRows.add(
+      _row(
+        context,
+        [s.totalRevenue, formatMru(totalIncome, locale)],
+        bold: true,
+        background: const Color(0xFF12DDE4),
+      ),
+    );
+    tableRows.add(
+      _row(
+        context,
+        [s.remaining, formatMru(totalIncome - totalExpenses, locale)],
+        bold: true,
+        background: const Color(0xFF16E316),
+      ),
+    );
+
+    if (MediaQuery.sizeOf(context).width < 700) {
+      Widget movement(
+        OwnerTransaction row,
+        String label, {
+        bool editable = false,
+      }) => Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          title: Text(label),
+          subtitle: MoneyText(row.amount, locale: locale),
+          trailing: editable
+              ? TransactionRowActions(
+                  onEdit: () => onEdit(row),
+                  onDelete: () => onDelete(row),
+                )
+              : null,
+        ),
+      );
+      Widget totalCard(String label, double value, Color color) => Card(
+        color: color,
+        margin: const EdgeInsets.only(bottom: 10),
+        child: ListTile(
+          title: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          trailing: MoneyText(
+            value,
+            locale: locale,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeader(s.expenses),
+          const SizedBox(height: 8),
+          ...expenses.map(
+            (row) => movement(
+              row,
+              row.description.isEmpty ? s.expense : row.description,
+              editable: true,
+            ),
+          ),
+          totalCard(s.totalExpenses, totalExpenses, const Color(0xFF12DDE4)),
+          SectionHeader(s.revenues),
+          const SizedBox(height: 8),
+          ...deposits.map(
+            (row) => movement(
+              row,
+              row.description.isEmpty ? s.deposit : row.description,
+            ),
+          ),
+          ...outcomes.map((row) => movement(row, shipNames[row.shipId] ?? '—')),
+          totalCard(s.totalRevenue, totalIncome, const Color(0xFF12DDE4)),
+          totalCard(
+            s.remaining,
+            totalIncome - totalExpenses,
+            const Color(0xFF16E316),
+          ),
+        ],
+      );
+    }
+
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: [
-            s.dateTime,
-            s.transactionType,
-            s.description,
-            s.recordedBy,
-            s.amountMru,
-          ].map((text) => DataColumn(label: Text(text))).toList(),
-          rows: rows
-              .map(
-                (row) => DataRow(
-                  cells: [
-                    DataCell(Text(when(row))),
-                    DataCell(Text(label(row.type))),
-                    DataCell(Text(row.description)),
-                    DataCell(Text(row.recordedBy ?? '—')),
-                    DataCell(Text(formatMru(row.amount, locale))),
-                  ],
-                ),
-              )
-              .toList(),
+        child: SizedBox(
+          width: 620,
+          child: Table(
+            border: TableBorder.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            columnWidths: const {
+              0: FlexColumnWidth(2),
+              1: FlexColumnWidth(1.2),
+              2: FixedColumnWidth(100),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: tableRows,
+          ),
         ),
       ),
     );
   }
+
+  TableRow _row(
+    BuildContext context,
+    List<String> values, {
+    bool bold = false,
+    Color? background,
+    OwnerTransaction? transaction,
+  }) => TableRow(
+    decoration: background == null ? null : BoxDecoration(color: background),
+    children: [
+      ...values.map(
+        (value) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Text(
+            value,
+            style: TextStyle(fontWeight: bold ? FontWeight.w800 : null),
+          ),
+        ),
+      ),
+      transaction == null
+          ? const SizedBox.shrink()
+          : TransactionRowActions(
+              onEdit: () => onEdit(transaction),
+              onDelete: () => onDelete(transaction),
+            ),
+    ],
+  );
 }
 
 class _OwnerInput {
@@ -667,33 +840,31 @@ class _OwnerDialogState extends State<_OwnerDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    return AlertDialog(
-      title: Text(widget.owner == null ? s.addOwner : s.editOwner),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              decoration: InputDecoration(labelText: s.name),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: phone,
-              decoration: InputDecoration(labelText: s.phone),
-              keyboardType: TextInputType.phone,
-            ),
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+    return AppDialogShell(
+      title: widget.owner == null ? s.addOwner : s.editOwner,
+      icon: Icons.badge_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: name,
+            decoration: InputDecoration(labelText: s.name),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: phone,
+            decoration: InputDecoration(labelText: s.phone),
+            keyboardType: TextInputType.phone,
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
       actions: [
         TextButton(
@@ -736,7 +907,6 @@ class _TransactionDialog extends StatefulWidget {
 class _TransactionDialogState extends State<_TransactionDialog> {
   final amount = TextEditingController();
   final description = TextEditingController();
-  DateTime date = DateTime.now();
   String? error;
 
   @override
@@ -749,51 +919,35 @@ class _TransactionDialogState extends State<_TransactionDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final locale = Localizations.localeOf(context).toLanguageTag();
     final title = switch (widget.type) {
       'OWNER_DEPOSIT' => s.addDeposit,
-      _ => s.addWithdrawal,
+      _ => s.addExpense,
     };
-    return AlertDialog(
-      title: Text(title),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: amount,
-              decoration: InputDecoration(labelText: s.amountMru),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: description,
-              decoration: InputDecoration(labelText: s.description),
-            ),
-            ListTile(
-              title: Text(s.date),
-              subtitle: Text(DateFormat.yMd(locale).format(date)),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                final selected = await showDatePicker(
-                  context: context,
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                  initialDate: date,
-                );
-                if (selected != null) setState(() => date = selected);
-              },
-            ),
-            if (error != null)
-              Text(
+    return AppDialogShell(
+      title: title,
+      icon: Icons.account_balance_wallet_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: amount,
+            decoration: InputDecoration(labelText: s.amountMru),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: description,
+            decoration: InputDecoration(labelText: s.description),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
                 error!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
       actions: [
         TextButton(
@@ -803,13 +957,15 @@ class _TransactionDialogState extends State<_TransactionDialog> {
         FilledButton(
           onPressed: () {
             final value = double.tryParse(amount.text.replaceAll(',', '.'));
-            if (value == null || value <= 0) {
+            if (value == null ||
+                value <= 0 ||
+                description.text.trim().isEmpty) {
               setState(() => error = s.validAmountRequired);
               return;
             }
             Navigator.pop(
               context,
-              _TransactionInput(value, date, description.text.trim()),
+              _TransactionInput(value, DateTime.now(), description.text.trim()),
             );
           },
           child: Text(s.save),
@@ -835,28 +991,27 @@ class _DateFilterDialogState extends State<_DateFilterDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final locale = Localizations.localeOf(context).toLanguageTag();
-    return AlertDialog(
-      title: Text(s.filters),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _DateTile(
-              label: s.startDate,
-              value: start,
-              locale: locale,
-              onChanged: (value) => setState(() => start = value),
-            ),
-            _DateTile(
-              label: s.endDate,
-              value: end,
-              locale: locale,
-              onChanged: (value) => setState(() => end = value),
-            ),
-          ],
-        ),
+    return AppDialogShell(
+      title: s.filters,
+      icon: Icons.filter_alt_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppDateField(
+            label: s.startDate,
+            value: start,
+            placeholder: s.allDates,
+            onChanged: (value) => setState(() => start = value),
+          ),
+          const SizedBox(height: 10),
+          AppDateField(
+            label: s.endDate,
+            value: end,
+            placeholder: s.allDates,
+            firstDate: start,
+            onChanged: (value) => setState(() => end = value),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -873,61 +1028,4 @@ class _DateFilterDialogState extends State<_DateFilterDialog> {
       ],
     );
   }
-}
-
-class _DateTile extends StatelessWidget {
-  const _DateTile({
-    required this.label,
-    required this.value,
-    required this.locale,
-    required this.onChanged,
-  });
-  final String label;
-  final DateTime? value;
-  final String locale;
-  final ValueChanged<DateTime> onChanged;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(label),
-    subtitle: Text(
-      value == null
-          ? AppLocalizations.of(context).allDates
-          : DateFormat.yMd(locale).format(value!),
-    ),
-    trailing: const Icon(Icons.calendar_today),
-    onTap: () async {
-      final selected = await showDatePicker(
-        context: context,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-        initialDate: value ?? DateTime.now(),
-      );
-      if (selected != null) onChanged(selected);
-    },
-  );
-}
-
-class _StateMessage extends StatelessWidget {
-  const _StateMessage({required this.message, this.action, this.onTap});
-  final String message;
-  final String? action;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          if (action != null && onTap != null) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onTap, child: Text(action!)),
-          ],
-        ],
-      ),
-    ),
-  );
 }

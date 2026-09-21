@@ -9,10 +9,10 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appName => 'TAR FISHING';
+  String get appName => 'Tar Fishing';
 
   @override
-  String get startupMessage => 'جارٍ تجهيز مساحة العمل البحرية…';
+  String get startupMessage => 'جارٍ تجهيز مساحة عمل Tar Fishing…';
 
   @override
   String get loginTitle => 'تسجيل الدخول';
@@ -49,6 +49,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ships => 'السفن';
 
   @override
+  String get allShipsOverall => 'إجمالي جميع السفن';
+
+  @override
   String get clients => 'العملاء';
 
   @override
@@ -70,6 +73,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get logout => 'تسجيل الخروج';
 
   @override
+  String get logoutConfirmation => 'هل أنت متأكد من تسجيل الخروج؟';
+
+  @override
+  String get confirmLogout => 'تسجيل الخروج';
+
+  @override
   String get language => 'اللغة';
 
   @override
@@ -77,6 +86,18 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get arabic => 'العربية';
+
+  @override
+  String get appearance => 'المظهر';
+
+  @override
+  String get themeSystem => 'النظام';
+
+  @override
+  String get themeLight => 'فاتح';
+
+  @override
+  String get themeDark => 'داكن';
 
   @override
   String get foundationMessage => 'هذا القسم جاهز لإضافة وظائفه.';
@@ -106,7 +127,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get totalExpenses => 'إجمالي المصروفات';
 
   @override
-  String get profitLoss => 'الربح / الخسارة';
+  String get profitLoss => 'الباقي';
 
   @override
   String get shipSummary => 'ملخص السفن';
@@ -271,6 +292,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tripTransactions => 'معاملات الرحلة';
 
   @override
+  String get expenses => 'المصروفات';
+
+  @override
+  String get revenues => 'الإيرادات';
+
+  @override
   String get noTripTransactions => 'لا توجد معاملات لهذه الرحلة.';
 
   @override
@@ -283,7 +310,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get addClientPurchase => 'إضافة شراء عميل';
 
   @override
+  String get addPurchaseLine => 'إضافة صنف آخر';
+
+  @override
   String get revenue => 'إيراد';
+
+  @override
+  String get outcome => 'المداخيل';
 
   @override
   String get expense => 'مصروف';
@@ -298,7 +331,31 @@ class AppLocalizationsAr extends AppLocalizations {
   String get description => 'الوصف / السبب';
 
   @override
+  String get statementDescription => 'الوصف';
+
+  @override
   String get amountMru => 'المبلغ (MRU)';
+
+  @override
+  String get species => 'النوع';
+
+  @override
+  String get quantity => 'الكمية';
+
+  @override
+  String get unitPrice => 'سعر الوحدة';
+
+  @override
+  String get amount => 'المبلغ';
+
+  @override
+  String get paid => 'المدفوع';
+
+  @override
+  String get remaining => 'المتبقي';
+
+  @override
+  String get total => 'الإجمالي';
 
   @override
   String get validAmountRequired => 'أدخل مبلغاً موجباً وجميع الحقول المطلوبة.';
@@ -343,7 +400,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get purchase => 'شراء';
 
   @override
+  String get purchases => 'المشتريات';
+
+  @override
   String get payment => 'دفعة';
+
+  @override
+  String get payments => 'الدفعات';
+
+  @override
+  String get paymentMethod => 'طريقة الدفع';
+
+  @override
+  String get cash => 'نقداً';
 
   @override
   String get filters => 'عوامل التصفية';
@@ -518,7 +587,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get deposit => 'إيداع';
 
   @override
-  String get withdrawal => 'سحب';
+  String get withdrawal => 'الموصلات';
 
   @override
   String get businessOwesOwner => 'الشركة مدينة للمالك';
@@ -633,7 +702,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get totalDeposits => 'إجمالي الإيداعات';
 
   @override
-  String get totalWithdrawals => 'إجمالي السحوبات';
+  String get totalWithdrawals => 'إجمالي الموصلات';
 
   @override
   String get periodMovement => 'حركة الفترة';
@@ -761,7 +830,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get companySettingsError => 'تعذر تحميل معلومات الشركة.';
 
   @override
-  String get welcomeTitle => 'نظرة مالية بحرية';
+  String get welcomeTitle => 'النظرة المالية لـ Tar Fishing';
 
   @override
   String get welcomeSubtitle => 'تابع المؤشرات الأساسية من مساحة آمنة.';
@@ -777,4 +846,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get retry => 'إعادة المحاولة';
+
+  @override
+  String get more => 'المزيد';
 }

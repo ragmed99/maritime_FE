@@ -101,13 +101,13 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In fr, this message translates to:
-  /// **'TAR FISHING'**
+  /// **'Tar Fishing'**
   String get appName;
 
   /// No description provided for @startupMessage.
   ///
   /// In fr, this message translates to:
-  /// **'Préparation de votre espace maritime…'**
+  /// **'Préparation de votre espace Tar Fishing…'**
   String get startupMessage;
 
   /// No description provided for @loginTitle.
@@ -176,6 +176,12 @@ abstract class AppLocalizations {
   /// **'Navires'**
   String get ships;
 
+  /// No description provided for @allShipsOverall.
+  ///
+  /// In fr, this message translates to:
+  /// **'Total de tous les navires'**
+  String get allShipsOverall;
+
   /// No description provided for @clients.
   ///
   /// In fr, this message translates to:
@@ -218,6 +224,18 @@ abstract class AppLocalizations {
   /// **'Déconnexion'**
   String get logout;
 
+  /// No description provided for @logoutConfirmation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voulez-vous vraiment vous déconnecter ?'**
+  String get logoutConfirmation;
+
+  /// No description provided for @confirmLogout.
+  ///
+  /// In fr, this message translates to:
+  /// **'Se déconnecter'**
+  String get confirmLogout;
+
   /// No description provided for @language.
   ///
   /// In fr, this message translates to:
@@ -235,6 +253,30 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Arabe'**
   String get arabic;
+
+  /// No description provided for @appearance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Apparence'**
+  String get appearance;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In fr, this message translates to:
+  /// **'Système'**
+  String get themeSystem;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clair'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sombre'**
+  String get themeDark;
 
   /// No description provided for @foundationMessage.
   ///
@@ -281,19 +323,19 @@ abstract class AppLocalizations {
   /// No description provided for @totalRevenue.
   ///
   /// In fr, this message translates to:
-  /// **'Revenus totaux'**
+  /// **'Total des revenus'**
   String get totalRevenue;
 
   /// No description provided for @totalExpenses.
   ///
   /// In fr, this message translates to:
-  /// **'Dépenses totales'**
+  /// **'Total des dépenses'**
   String get totalExpenses;
 
   /// No description provided for @profitLoss.
   ///
   /// In fr, this message translates to:
-  /// **'Bénéfice / perte'**
+  /// **'Le reste'**
   String get profitLoss;
 
   /// No description provided for @shipSummary.
@@ -620,6 +662,18 @@ abstract class AppLocalizations {
   /// **'Transactions du voyage'**
   String get tripTransactions;
 
+  /// No description provided for @expenses.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dépenses'**
+  String get expenses;
+
+  /// No description provided for @revenues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Revenus'**
+  String get revenues;
+
   /// No description provided for @noTripTransactions.
   ///
   /// In fr, this message translates to:
@@ -644,11 +698,23 @@ abstract class AppLocalizations {
   /// **'Ajouter un achat client'**
   String get addClientPurchase;
 
+  /// No description provided for @addPurchaseLine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un autre article'**
+  String get addPurchaseLine;
+
   /// No description provided for @revenue.
   ///
   /// In fr, this message translates to:
   /// **'Revenu'**
   String get revenue;
+
+  /// No description provided for @outcome.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recette'**
+  String get outcome;
 
   /// No description provided for @expense.
   ///
@@ -674,11 +740,59 @@ abstract class AppLocalizations {
   /// **'Description / motif'**
   String get description;
 
+  /// No description provided for @statementDescription.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description'**
+  String get statementDescription;
+
   /// No description provided for @amountMru.
   ///
   /// In fr, this message translates to:
   /// **'Montant (MRU)'**
   String get amountMru;
+
+  /// No description provided for @species.
+  ///
+  /// In fr, this message translates to:
+  /// **'Espèce'**
+  String get species;
+
+  /// No description provided for @quantity.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quantité'**
+  String get quantity;
+
+  /// No description provided for @unitPrice.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prix U'**
+  String get unitPrice;
+
+  /// No description provided for @amount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Montant'**
+  String get amount;
+
+  /// No description provided for @paid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Payé'**
+  String get paid;
+
+  /// No description provided for @remaining.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restant'**
+  String get remaining;
+
+  /// No description provided for @total.
+  ///
+  /// In fr, this message translates to:
+  /// **'Total'**
+  String get total;
 
   /// No description provided for @validAmountRequired.
   ///
@@ -764,11 +878,35 @@ abstract class AppLocalizations {
   /// **'Achat'**
   String get purchase;
 
+  /// No description provided for @purchases.
+  ///
+  /// In fr, this message translates to:
+  /// **'Achats'**
+  String get purchases;
+
   /// No description provided for @payment.
   ///
   /// In fr, this message translates to:
   /// **'Paiement'**
   String get payment;
+
+  /// No description provided for @payments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paiements'**
+  String get payments;
+
+  /// No description provided for @paymentMethod.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode de paiement'**
+  String get paymentMethod;
+
+  /// No description provided for @cash.
+  ///
+  /// In fr, this message translates to:
+  /// **'Espèces'**
+  String get cash;
 
   /// No description provided for @filters.
   ///
@@ -1595,7 +1733,7 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Vue financière maritime'**
+  /// **'Vue financière Tar Fishing'**
   String get welcomeTitle;
 
   /// No description provided for @welcomeSubtitle.
@@ -1627,6 +1765,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Réessayer'**
   String get retry;
+
+  /// No description provided for @more.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plus'**
+  String get more;
 }
 
 class _AppLocalizationsDelegate

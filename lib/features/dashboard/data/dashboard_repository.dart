@@ -16,6 +16,7 @@ class DashboardRepository implements DashboardDataSource {
       _api.get<Map<String, dynamic>>('reports/ships/'),
       _api.get<Map<String, dynamic>>('reports/clients/'),
       _api.get<Map<String, dynamic>>('reports/partners/'),
+      _api.get<Map<String, dynamic>>('financial-summary/'),
     ]);
     List<Map<String, dynamic>> rows(int index) =>
         (responses[index].data!['results'] as List<dynamic>)
@@ -25,6 +26,10 @@ class DashboardRepository implements DashboardDataSource {
       ships: rows(1).map(ShipSummary.fromJson).toList(),
       clients: rows(2).map(ClientSummary.fromJson).toList(),
       partners: rows(3).map(PartnerSummary.fromJson).toList(),
+      positions: (responses[4].data!['positions'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(FinancialPosition.fromJson)
+          .toList(),
     );
   }
 }

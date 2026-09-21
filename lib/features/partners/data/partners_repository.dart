@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/models/account_position.dart';
 import '../domain/partner_models.dart';
@@ -43,6 +45,21 @@ class PartnersRepository {
           .where((row) => row['partner'] == id)
           .map(PartnerTransaction.fromJson)
           .toList();
+  Future<Uint8List> statementPdf(
+    String id, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async => Uint8List.fromList(
+    await _api.download(
+      'partners/$id/statement/pdf/',
+      query: {
+        if (startDate != null)
+          'start_date': startDate.toIso8601String().split('T').first,
+        if (endDate != null)
+          'end_date': endDate.toIso8601String().split('T').first,
+      },
+    ),
+  );
   Future<void> addTransaction({
     required String partnerId,
     required String type,
@@ -59,4 +76,20 @@ class PartnersRepository {
       'description': description,
     },
   );
+
+  Future<void> updateTransaction({
+    required String id,
+    required double amount,
+    required DateTime date,
+    required String description,
+  }) => _api.patch(
+    'transactions/$id/',
+    data: {
+      'amount': amount.toStringAsFixed(2),
+      'transaction_date': date.toIso8601String().split('T').first,
+      'description': description,
+    },
+  );
+
+  Future<void> deleteTransaction(String id) => _api.delete('transactions/$id/');
 }

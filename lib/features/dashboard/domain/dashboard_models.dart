@@ -80,9 +80,36 @@ class DashboardData {
     required this.ships,
     required this.clients,
     required this.partners,
+    required this.positions,
   });
   final DashboardMetrics metrics;
   final List<ShipSummary> ships;
   final List<ClientSummary> clients;
   final List<PartnerSummary> partners;
+  final List<FinancialPosition> positions;
+}
+
+class FinancialPosition {
+  const FinancialPosition({
+    required this.kind,
+    required this.name,
+    required this.theyOweUs,
+    required this.weOweThem,
+    required this.createdAt,
+  });
+
+  factory FinancialPosition.fromJson(Map<String, dynamic> json) =>
+      FinancialPosition(
+        kind: json['kind'] as String,
+        name: json['name'] as String,
+        theyOweUs: moneyFromJson(json['they_owe_us']),
+        weOweThem: moneyFromJson(json['we_owe_them']),
+        createdAt: DateTime.parse(json['created_at'] as String),
+      );
+
+  final String kind;
+  final String name;
+  final double theyOweUs;
+  final double weOweThem;
+  final DateTime createdAt;
 }

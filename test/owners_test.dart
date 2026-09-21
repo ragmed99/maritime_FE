@@ -5,6 +5,7 @@ import 'package:maritime_frontend/core/config/app_environment.dart';
 import 'package:maritime_frontend/core/network/api_client.dart';
 import 'package:maritime_frontend/core/models/account_position.dart';
 import 'package:maritime_frontend/core/storage/token_storage.dart';
+import 'package:maritime_frontend/core/theme/app_theme.dart';
 import 'package:maritime_frontend/features/owners/application/owners_controller.dart';
 import 'package:maritime_frontend/features/owners/data/owners_repository.dart';
 import 'package:maritime_frontend/features/owners/domain/owner_models.dart';
@@ -32,11 +33,9 @@ void main() {
     final ship = OwnerShip.fromJson({
       'id': 'ship-1',
       'name': 'Al Bahri',
-      'registration_number': 'NKC-42',
       'owner': 'owner-1',
     });
     expect(ship.name, 'Al Bahri');
-    expect(ship.registrationNumber, 'NKC-42');
   });
 
   testWidgets('owners list displays contact data and supports search', (
@@ -122,6 +121,7 @@ class _BalanceHarness extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
+    theme: AppTheme.light(),
     locale: const Locale('fr'),
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: const [

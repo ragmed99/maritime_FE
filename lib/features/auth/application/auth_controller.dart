@@ -32,9 +32,19 @@ class AuthController extends ChangeNotifier {
     try {
       currentUser = await _api.currentUser();
       status = AuthStatus.authenticated;
-    } catch (_) {
-      await _storage.clear();
+    } on DioException catch (exception) {
+      // ApiClient clears storage when the refresh token is truly rejected.
+      // Keep tokens on transient server failures so reopening/retrying can recover.
       status = AuthStatus.unauthenticated;
+      error =
+          exception.type == DioExceptionType.connectionError ||
+              exception.type == DioExceptionType.connectionTimeout ||
+              exception.type == DioExceptionType.receiveTimeout
+          ? AuthError.network
+          : AuthError.server;
+    } catch (_) {
+      status = AuthStatus.unauthenticated;
+      error = AuthError.server;
     }
     notifyListeners();
   }
@@ -53,15 +63,12 @@ class AuthController extends ChangeNotifier {
         ApiAuthError.network => AuthError.network,
         ApiAuthError.server => AuthError.server,
       };
-      await _storage.clear();
     } on DioException catch (exception) {
       error = exception.type == DioExceptionType.connectionError
           ? AuthError.network
           : AuthError.server;
-      await _storage.clear();
     } catch (_) {
       error = AuthError.server;
-      await _storage.clear();
     } finally {
       isLoading = false;
       notifyListeners();

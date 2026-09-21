@@ -4,13 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
-import '../../../core/formatters/money_formatter.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_date_field.dart';
+import '../../../core/widgets/app_dialog_shell.dart';
+import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/list_header_bar.dart';
+import '../../../core/widgets/money_text.dart';
 import '../application/transactions_controller.dart';
 import '../domain/transaction_models.dart';
 
 const transactionTypes = [
   'SHIP_REVENUE',
-  'SHIP_EXPENSE',
   'CLIENT_PURCHASE',
   'CLIENT_PAYMENT',
   'PARTNER_LOAN_RECEIVED',
@@ -32,6 +36,27 @@ String transactionTypeLabel(AppLocalizations s, String type) => switch (type) {
   'PARTNER_REPAYMENT_PAID' => s.repaymentPaid,
   'OWNER_DEPOSIT' => s.ownerDeposit,
   _ => s.ownerWithdrawal,
+};
+
+IconData _transactionIcon(String type) => switch (type) {
+  'SHIP_REVENUE' => Icons.trending_up,
+  'SHIP_EXPENSE' => Icons.trending_down,
+  'CLIENT_PURCHASE' => Icons.shopping_cart_outlined,
+  'CLIENT_PAYMENT' => Icons.payments_outlined,
+  'PARTNER_LOAN_RECEIVED' => Icons.south_west,
+  'PARTNER_LOAN_GIVEN' => Icons.north_east,
+  'PARTNER_REPAYMENT_RECEIVED' => Icons.call_received,
+  'PARTNER_REPAYMENT_PAID' => Icons.reply,
+  'OWNER_DEPOSIT' => Icons.add_card,
+  _ => Icons.payments_outlined,
+};
+
+Color _transactionTint(MoneyColors money, String type) => switch (type) {
+  'SHIP_EXPENSE' ||
+  'PARTNER_LOAN_GIVEN' ||
+  'PARTNER_REPAYMENT_PAID' ||
+  'OWNER_WITHDRAWAL' => money.negative,
+  _ => money.positive,
 };
 
 class TransactionsScreen extends StatefulWidget {
@@ -67,13 +92,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     builder: (context, _) {
       final s = AppLocalizations.of(context);
       if (widget.controller.status == TransactionsStatus.loading) {
-        return const Center(child: CircularProgressIndicator());
+        return AppStateView.loading();
       }
       if (widget.controller.status == TransactionsStatus.error) {
-        return _StateMessage(
+        return AppStateView.error(
           message: s.transactionsLoadError,
-          action: s.retry,
-          onTap: widget.controller.load,
+          retryLabel: s.retry,
+          onRetry: widget.controller.load,
         );
       }
       final lookups = widget.controller.lookups!;
@@ -84,26 +109,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      s.transactions,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: widget.controller.load,
-                    tooltip: s.refresh,
-                    icon: const Icon(Icons.refresh),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _filter(lookups),
-                    icon: const Icon(Icons.filter_alt_outlined),
-                    label: Text(s.filters),
-                  ),
-                ],
+              ListHeaderBar(
+                title: s.transactions,
+                onRefresh: widget.controller.load,
+                refreshTooltip: s.refresh,
+                trailing: OutlinedButton.icon(
+                  onPressed: () => _filter(lookups),
+                  icon: const Icon(Icons.filter_alt_outlined),
+                  label: Text(s.filters),
+                ),
               ),
               const SizedBox(height: 18),
               TextField(
@@ -125,7 +139,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               ),
               const SizedBox(height: 18),
               if (widget.controller.rows.isEmpty)
-                _StateMessage(message: s.noTransactionsFound)
+                AppStateView.empty(
+                  message: s.noTransactionsFound,
+                  icon: Icons.receipt_long_outlined,
+                )
               else if (constraints.maxWidth >= 900)
                 _TransactionTable(
                   rows: widget.controller.rows,
@@ -238,8 +255,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final s = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(s.deleteTransaction),
+      builder: (_) => AppDialogShell(
+        title: s.deleteTransaction,
+        icon: Icons.delete_outline,
         content: Text(s.deleteTransactionConfirmation),
         actions: [
           TextButton(
@@ -282,43 +300,50 @@ class _TransactionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final tint = _transactionTint(context.moneyColors, row.type);
     final relations = _relations(s, row, lookups);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      transactionTypeLabel(s, row.type),
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  Text(
-                    formatMru(row.amount, locale),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) =>
-                        value == 'edit' ? onEdit() : onDelete(),
-                    itemBuilder: (_) => [
-                      PopupMenuItem(value: 'edit', child: Text(s.edit)),
-                      PopupMenuItem(value: 'delete', child: Text(s.delete)),
-                    ],
-                  ),
-                ],
-              ),
-              Text(_when(row, locale)),
-              if (row.description.isNotEmpty) Text(row.description),
-              if (relations.isNotEmpty) Text(relations),
-              if (row.recordedBy != null)
-                Text('${s.recordedBy}: ${row.recordedBy}'),
-            ],
+        child: ListTile(
+          contentPadding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+          leading: CircleAvatar(
+            backgroundColor: tint.withValues(alpha: 0.14),
+            foregroundColor: tint,
+            child: Icon(_transactionIcon(row.type), size: 18),
+          ),
+          title: Text(transactionTypeLabel(s, row.type)),
+          isThreeLine: true,
+          subtitle: Text(
+            [
+              _when(row, locale),
+              if (row.description.isNotEmpty) row.description,
+              if (relations.isNotEmpty) relations,
+              if (row.recordedBy != null) '${s.recordedBy}: ${row.recordedBy}',
+            ].join('\n'),
+          ),
+          trailing: SizedBox(
+            width: 96,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                MoneyText(
+                  row.amount,
+                  locale: locale,
+                  style: TextStyle(color: tint, fontWeight: FontWeight.w700),
+                ),
+                PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  onSelected: (value) =>
+                      value == 'edit' ? onEdit() : onDelete(),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(value: 'edit', child: Text(s.edit)),
+                    PopupMenuItem(value: 'delete', child: Text(s.delete)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -342,6 +367,7 @@ class _TransactionTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final money = context.moneyColors;
     return Card(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -361,7 +387,15 @@ class _TransactionTable extends StatelessWidget {
                   cells: [
                     DataCell(Text(_when(row, locale))),
                     DataCell(Text(transactionTypeLabel(s, row.type))),
-                    DataCell(Text(formatMru(row.amount, locale))),
+                    DataCell(
+                      MoneyText(
+                        row.amount,
+                        locale: locale,
+                        style: TextStyle(
+                          color: _transactionTint(money, row.type),
+                        ),
+                      ),
+                    ),
                     DataCell(Text(row.description)),
                     DataCell(Text(_relations(s, row, lookups))),
                     DataCell(Text(row.recordedBy ?? '—')),
@@ -447,56 +481,52 @@ class _EditDialogState extends State<_EditDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final locale = Localizations.localeOf(context).toLanguageTag();
-    return AlertDialog(
-      title: Text(s.editTransaction),
-      content: SizedBox(
-        width: 430,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(transactionTypeLabel(s, widget.row.type)),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amount,
-                decoration: InputDecoration(labelText: s.amountMru),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
+    return AppDialogShell(
+      title: s.editTransaction,
+      icon: _transactionIcon(widget.row.type),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              transactionTypeLabel(s, widget.row.type),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: description,
-                decoration: InputDecoration(labelText: s.description),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: reference,
-                decoration: InputDecoration(labelText: s.reference),
-              ),
-              ListTile(
-                title: Text(s.date),
-                subtitle: Text(DateFormat.yMd(locale).format(date)),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () async {
-                  final selected = await showDatePicker(
-                    context: context,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                    initialDate: date,
-                  );
-                  if (selected != null) setState(() => date = selected);
-                },
-              ),
-              if (error != null)
-                Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: amount,
+            decoration: InputDecoration(labelText: s.amountMru),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: description,
+            decoration: InputDecoration(labelText: s.description),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: reference,
+            decoration: InputDecoration(labelText: s.reference),
+          ),
+          const SizedBox(height: 10),
+          AppDateField(
+            label: s.date,
+            value: date,
+            onChanged: (value) => setState(() => date = value),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
       ),
       actions: [
         TextButton(
@@ -552,68 +582,68 @@ class _FilterDialogState extends State<_FilterDialog> {
         ? widget.lookups.trips
         : widget.lookups.trips.where((item) => item.parentId == ship).toList();
     if (trip != null && !trips.any((item) => item.id == trip)) trip = null;
-    return AlertDialog(
-      title: Text(s.filters),
-      content: SizedBox(
-        width: 470,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _DateFilter(
-                label: s.startDate,
-                value: start,
-                onChanged: (v) => setState(() => start = v),
-              ),
-              _DateFilter(
-                label: s.endDate,
-                value: end,
-                onChanged: (v) => setState(() => end = v),
-              ),
-              _Select(
-                label: s.transactionType,
-                value: type,
-                options: transactionTypes
-                    .map(
-                      (value) =>
-                          LookupOption(value, transactionTypeLabel(s, value)),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => type = v),
-              ),
-              _Select(
-                label: s.shipName,
-                value: ship,
-                options: widget.lookups.ships,
-                onChanged: (v) => setState(() => ship = v),
-              ),
-              _Select(
-                label: s.trip,
-                value: trip,
-                options: trips,
-                onChanged: (v) => setState(() => trip = v),
-              ),
-              _Select(
-                label: s.client,
-                value: client,
-                options: widget.lookups.clients,
-                onChanged: (v) => setState(() => client = v),
-              ),
-              _Select(
-                label: s.partners,
-                value: partner,
-                options: widget.lookups.partners,
-                onChanged: (v) => setState(() => partner = v),
-              ),
-              _Select(
-                label: s.owner,
-                value: owner,
-                options: widget.lookups.owners,
-                onChanged: (v) => setState(() => owner = v),
-              ),
-            ],
+    return AppDialogShell(
+      title: s.filters,
+      icon: Icons.filter_alt_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppDateField(
+            label: s.startDate,
+            value: start,
+            placeholder: s.allDates,
+            onChanged: (v) => setState(() => start = v),
           ),
-        ),
+          const SizedBox(height: 10),
+          AppDateField(
+            label: s.endDate,
+            value: end,
+            placeholder: s.allDates,
+            firstDate: start,
+            onChanged: (v) => setState(() => end = v),
+          ),
+          _Select(
+            label: s.transactionType,
+            value: type,
+            options: transactionTypes
+                .map(
+                  (value) =>
+                      LookupOption(value, transactionTypeLabel(s, value)),
+                )
+                .toList(),
+            onChanged: (v) => setState(() => type = v),
+          ),
+          _Select(
+            label: s.shipName,
+            value: ship,
+            options: widget.lookups.ships,
+            onChanged: (v) => setState(() => ship = v),
+          ),
+          _Select(
+            label: s.trip,
+            value: trip,
+            options: trips,
+            onChanged: (v) => setState(() => trip = v),
+          ),
+          _Select(
+            label: s.client,
+            value: client,
+            options: widget.lookups.clients,
+            onChanged: (v) => setState(() => client = v),
+          ),
+          _Select(
+            label: s.partners,
+            value: partner,
+            options: widget.lookups.partners,
+            onChanged: (v) => setState(() => partner = v),
+          ),
+          _Select(
+            label: s.owner,
+            value: owner,
+            options: widget.lookups.owners,
+            onChanged: (v) => setState(() => owner = v),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -672,61 +702,6 @@ class _Select extends StatelessWidget {
         ),
       ],
       onChanged: onChanged,
-    ),
-  );
-}
-
-class _DateFilter extends StatelessWidget {
-  const _DateFilter({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-  final String label;
-  final DateTime? value;
-  final ValueChanged<DateTime> onChanged;
-  @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(label),
-    subtitle: Text(
-      value == null
-          ? AppLocalizations.of(context).allDates
-          : DateFormat.yMd(
-              Localizations.localeOf(context).toLanguageTag(),
-            ).format(value!),
-    ),
-    trailing: const Icon(Icons.calendar_today),
-    onTap: () async {
-      final selected = await showDatePicker(
-        context: context,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-        initialDate: value ?? DateTime.now(),
-      );
-      if (selected != null) onChanged(selected);
-    },
-  );
-}
-
-class _StateMessage extends StatelessWidget {
-  const _StateMessage({required this.message, this.action, this.onTap});
-  final String message;
-  final String? action;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          if (action != null && onTap != null) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onTap, child: Text(action!)),
-          ],
-        ],
-      ),
     ),
   );
 }

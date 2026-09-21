@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_date_field.dart';
+import '../../../core/widgets/app_dialog_shell.dart';
+import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/initials_avatar.dart';
+import '../../../core/widgets/status_pill.dart';
 import '../data/administration_repository.dart';
 import '../domain/administration_models.dart';
 
@@ -69,32 +75,50 @@ class _AdminCard extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 360,
-    height: 120,
-    child: Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Icon(icon, size: 36),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge,
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 360,
+      height: 120,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+          boxShadow: AppShadows.soft(scheme.shadow),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 26, color: scheme.primary),
                 ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class UsersScreen extends StatefulWidget {
@@ -130,6 +154,7 @@ class _UsersScreenState extends State<UsersScreen> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final money = context.moneyColors;
     return Scaffold(
       appBar: AppBar(
         title: Text(s.userManagement),
@@ -147,15 +172,15 @@ class _UsersScreenState extends State<UsersScreen> {
         label: Text(s.createUser),
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? AppStateView.loading()
           : failed
-          ? _StateMessage(
+          ? AppStateView.error(
               message: s.usersLoadError,
-              action: s.retry,
-              onTap: _load,
+              retryLabel: s.retry,
+              onRetry: _load,
             )
           : users.isEmpty
-          ? _StateMessage(message: s.noUsers)
+          ? AppStateView.empty(message: s.noUsers, icon: Icons.people_outline)
           : LayoutBuilder(
               builder: (context, constraints) {
                 if (constraints.maxWidth >= 850) {
@@ -188,12 +213,17 @@ class _UsersScreenState extends State<UsersScreen> {
                                         Text(
                                           user.isStaff
                                               ? s.administrator
+                                              : user.role == 'POINTEUR'
+                                              ? 'Pointeur'
                                               : s.normalUser,
                                         ),
                                       ),
                                       DataCell(
-                                        Text(
+                                        StatusPill(
                                           user.isActive ? s.active : s.inactive,
+                                          color: user.isActive
+                                              ? money.positive
+                                              : money.neutral,
                                         ),
                                       ),
                                       DataCell(
@@ -223,17 +253,33 @@ class _UsersScreenState extends State<UsersScreen> {
                             padding: const EdgeInsets.only(bottom: 10),
                             child: Card(
                               child: ListTile(
-                                leading: CircleAvatar(
-                                  child: Text(
-                                    user.username.characters.first
-                                        .toUpperCase(),
+                                leading: InitialsAvatar(user.username),
+                                title: Text(user.username),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Wrap(
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      Text(user.phone),
+                                      Text(
+                                        user.isStaff
+                                            ? s.administrator
+                                            : user.role == 'POINTEUR'
+                                            ? 'Pointeur'
+                                            : s.normalUser,
+                                      ),
+                                      StatusPill(
+                                        user.isActive ? s.active : s.inactive,
+                                        color: user.isActive
+                                            ? money.positive
+                                            : money.neutral,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                title: Text(user.username),
-                                subtitle: Text(
-                                  '${user.phone}\n${user.isStaff ? s.administrator : s.normalUser} · ${user.isActive ? s.active : s.inactive}',
-                                ),
-                                isThreeLine: true,
                                 trailing: _UserActions(
                                   user: user,
                                   onStatus: () => _status(user),
@@ -262,6 +308,7 @@ class _UsersScreenState extends State<UsersScreen> {
         username: value.username,
         password: value.password,
         phone: value.phone,
+        role: value.role,
       );
       await _load();
     } catch (_) {
@@ -323,8 +370,8 @@ class _UserActions extends StatelessWidget {
 }
 
 class _UserInput {
-  const _UserInput(this.username, this.password, this.phone);
-  final String username, password, phone;
+  const _UserInput(this.username, this.password, this.phone, this.role);
+  final String username, password, phone, role;
 }
 
 class _UserDialog extends StatefulWidget {
@@ -338,6 +385,7 @@ class _UserDialogState extends State<_UserDialog> {
       password = TextEditingController(),
       phone = TextEditingController();
   bool obscure = true;
+  String role = 'USER';
   String? error;
   @override
   void dispose() {
@@ -350,46 +398,57 @@ class _UserDialogState extends State<_UserDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    return AlertDialog(
-      title: Text(s.createUser),
-      content: SizedBox(
-        width: 440,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: username,
-                decoration: InputDecoration(labelText: s.username),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: phone,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(labelText: s.phone),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: password,
-                obscureText: obscure,
-                decoration: InputDecoration(
-                  labelText: s.password,
-                  suffixIcon: IconButton(
-                    onPressed: () => setState(() => obscure = !obscure),
-                    icon: Icon(
-                      obscure ? Icons.visibility : Icons.visibility_off,
-                    ),
-                  ),
-                ),
-              ),
-              if (error != null)
-                Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-            ],
+    return AppDialogShell(
+      title: s.createUser,
+      icon: Icons.person_add_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: username,
+            decoration: InputDecoration(labelText: s.username),
           ),
-        ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: phone,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(labelText: s.phone),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: role,
+            decoration: InputDecoration(labelText: s.role),
+            items: [
+              DropdownMenuItem(value: 'ADMIN', child: Text(s.administrator)),
+              DropdownMenuItem(value: 'USER', child: Text(s.normalUser)),
+              const DropdownMenuItem(
+                value: 'POINTEUR',
+                child: Text('Pointeur'),
+              ),
+            ],
+            onChanged: (value) => setState(() => role = value ?? 'USER'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: password,
+            obscureText: obscure,
+            decoration: InputDecoration(
+              labelText: s.password,
+              suffixIcon: IconButton(
+                onPressed: () => setState(() => obscure = !obscure),
+                icon: Icon(obscure ? Icons.visibility : Icons.visibility_off),
+              ),
+            ),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
       ),
       actions: [
         TextButton(
@@ -408,6 +467,7 @@ class _UserDialogState extends State<_UserDialog> {
                 username.text.trim(),
                 password.text,
                 phone.text.trim(),
+                role,
               ),
             );
           },
@@ -438,34 +498,32 @@ class _PasswordDialogState extends State<_PasswordDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: password,
-              obscureText: true,
-              decoration: InputDecoration(labelText: s.newPassword),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: confirm,
-              obscureText: true,
-              decoration: InputDecoration(labelText: s.confirmPassword),
-            ),
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+    return AppDialogShell(
+      title: widget.title,
+      icon: Icons.lock_reset_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: password,
+            obscureText: true,
+            decoration: InputDecoration(labelText: s.newPassword),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: confirm,
+            obscureText: true,
+            decoration: InputDecoration(labelText: s.confirmPassword),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
       actions: [
         TextButton(
@@ -564,15 +622,18 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? AppStateView.loading()
           : failed
-          ? _StateMessage(
+          ? AppStateView.error(
               message: s.auditLoadError,
-              action: s.retry,
-              onTap: _load,
+              retryLabel: s.retry,
+              onRetry: _load,
             )
           : rows.isEmpty
-          ? _StateMessage(message: s.noAuditLogs)
+          ? AppStateView.empty(
+              message: s.noAuditLogs,
+              icon: Icons.history_outlined,
+            )
           : LayoutBuilder(
               builder: (context, constraints) => ListView(
                 padding: const EdgeInsets.all(16),
@@ -616,6 +677,13 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
   }
 }
 
+Color _actionTint(MoneyColors money, ColorScheme scheme, String action) =>
+    switch (action) {
+      'CREATE' => money.positive,
+      'DELETE' => money.negative,
+      _ => scheme.primary,
+    };
+
 class _AuditCard extends StatelessWidget {
   const _AuditCard({required this.row});
   final AuditRecord row;
@@ -623,18 +691,43 @@ class _AuditCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context),
         locale = Localizations.localeOf(context).toLanguageTag();
+    final tint = _actionTint(
+      context.moneyColors,
+      Theme.of(context).colorScheme,
+      row.action,
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Card(
         child: ExpansionTile(
-          title: Text('${_action(s, row.action)} · ${row.entity}'),
-          subtitle: Text(
-            '${DateFormat.yMd(locale).add_Hm().format(row.timestamp.toLocal())}\n${s.user}: ${row.username ?? s.systemUser}',
+          leading: CircleAvatar(
+            backgroundColor: tint.withValues(alpha: 0.14),
+            foregroundColor: tint,
+            child: Text(
+              row.action.isNotEmpty ? row.action[0] : '?',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          title: Text(row.entity),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                StatusPill(_action(s, row.action), color: tint),
+                Text(
+                  '${DateFormat.yMd(locale).add_Hm().format(row.timestamp.toLocal())} · ${s.user}: ${row.username ?? s.systemUser}',
+                ),
+              ],
+            ),
           ),
           childrenPadding: const EdgeInsets.all(16),
           children: [
             SelectableText(
               '${s.entityId}: ${row.entityId}\n\n${s.oldValues}:\n${_json(row.oldValues)}\n\n${s.newValues}:\n${_json(row.newValues)}',
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12.5),
             ),
           ],
         ),
@@ -650,6 +743,8 @@ class _AuditTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context),
         locale = Localizations.localeOf(context).toLanguageTag();
+    final money = context.moneyColors;
+    final scheme = Theme.of(context).colorScheme;
     return Card(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -675,19 +770,36 @@ class _AuditTable extends StatelessWidget {
                       ),
                     ),
                     DataCell(Text(row.username ?? s.systemUser)),
-                    DataCell(Text(_action(s, row.action))),
+                    DataCell(
+                      StatusPill(
+                        _action(s, row.action),
+                        color: _actionTint(money, scheme, row.action),
+                      ),
+                    ),
                     DataCell(Text(row.entity)),
                     DataCell(SelectableText(row.entityId)),
                     DataCell(
                       SizedBox(
                         width: 260,
-                        child: SelectableText(_json(row.oldValues)),
+                        child: SelectableText(
+                          _json(row.oldValues),
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ),
                     DataCell(
                       SizedBox(
                         width: 260,
-                        child: SelectableText(_json(row.newValues)),
+                        child: SelectableText(
+                          _json(row.newValues),
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -730,67 +842,59 @@ class _AuditFilterDialogState extends State<_AuditFilterDialog> {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    return AlertDialog(
-      title: Text(s.filters),
-      content: SizedBox(
-        width: 440,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<int?>(
-                initialValue: user,
-                decoration: InputDecoration(labelText: s.user),
-                items: [
-                  DropdownMenuItem<int?>(value: null, child: Text(s.all)),
-                  ...widget.users.map(
-                    (item) => DropdownMenuItem<int?>(
-                      value: item.id,
-                      child: Text(item.username),
-                    ),
-                  ),
-                ],
-                onChanged: (value) => setState(() => user = value),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String?>(
-                initialValue: action,
-                decoration: InputDecoration(labelText: s.action),
-                items: [
-                  DropdownMenuItem<String?>(value: null, child: Text(s.all)),
-                  DropdownMenuItem(
-                    value: 'CREATE',
-                    child: Text(s.createAction),
-                  ),
-                  DropdownMenuItem(
-                    value: 'UPDATE',
-                    child: Text(s.updateAction),
-                  ),
-                  DropdownMenuItem(
-                    value: 'DELETE',
-                    child: Text(s.deleteAction),
-                  ),
-                ],
-                onChanged: (value) => setState(() => action = value),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: entity,
-                decoration: InputDecoration(labelText: s.entity),
-              ),
-              _DateTile(
-                label: s.startDate,
-                value: start,
-                onChanged: (value) => setState(() => start = value),
-              ),
-              _DateTile(
-                label: s.endDate,
-                value: end,
-                onChanged: (value) => setState(() => end = value),
+    return AppDialogShell(
+      title: s.filters,
+      icon: Icons.filter_alt_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<int?>(
+            initialValue: user,
+            decoration: InputDecoration(labelText: s.user),
+            items: [
+              DropdownMenuItem<int?>(value: null, child: Text(s.all)),
+              ...widget.users.map(
+                (item) => DropdownMenuItem<int?>(
+                  value: item.id,
+                  child: Text(item.username),
+                ),
               ),
             ],
+            onChanged: (value) => setState(() => user = value),
           ),
-        ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String?>(
+            initialValue: action,
+            decoration: InputDecoration(labelText: s.action),
+            items: [
+              DropdownMenuItem<String?>(value: null, child: Text(s.all)),
+              DropdownMenuItem(value: 'CREATE', child: Text(s.createAction)),
+              DropdownMenuItem(value: 'UPDATE', child: Text(s.updateAction)),
+              DropdownMenuItem(value: 'DELETE', child: Text(s.deleteAction)),
+            ],
+            onChanged: (value) => setState(() => action = value),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: entity,
+            decoration: InputDecoration(labelText: s.entity),
+          ),
+          const SizedBox(height: 10),
+          AppDateField(
+            label: s.startDate,
+            value: start,
+            placeholder: s.allDates,
+            onChanged: (value) => setState(() => start = value),
+          ),
+          const SizedBox(height: 10),
+          AppDateField(
+            label: s.endDate,
+            value: end,
+            placeholder: s.allDates,
+            firstDate: start,
+            onChanged: (value) => setState(() => end = value),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -816,59 +920,4 @@ class _AuditFilterDialogState extends State<_AuditFilterDialog> {
       ],
     );
   }
-}
-
-class _DateTile extends StatelessWidget {
-  const _DateTile({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-  final String label;
-  final DateTime? value;
-  final ValueChanged<DateTime> onChanged;
-  @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(label),
-    subtitle: Text(
-      value == null
-          ? AppLocalizations.of(context).allDates
-          : DateFormat.yMd(
-              Localizations.localeOf(context).toLanguageTag(),
-            ).format(value!),
-    ),
-    trailing: const Icon(Icons.calendar_today),
-    onTap: () async {
-      final selected = await showDatePicker(
-        context: context,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-        initialDate: value ?? DateTime.now(),
-      );
-      if (selected != null) onChanged(selected);
-    },
-  );
-}
-
-class _StateMessage extends StatelessWidget {
-  const _StateMessage({required this.message, this.action, this.onTap});
-  final String message;
-  final String? action;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          if (action != null && onTap != null) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onTap, child: Text(action!)),
-          ],
-        ],
-      ),
-    ),
-  );
 }

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../core/models/account_position.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/client_models.dart';
@@ -19,8 +21,24 @@ class ClientsRepository {
     return rows;
   }
 
-  Future<List<ClientRecord>> clients() async =>
-      (await _rows('clients/')).map(ClientRecord.fromJson).toList();
+  Future<List<ClientRecord>> clients() async {
+    final records = (await _rows(
+      'clients/',
+    )).map(ClientRecord.fromJson).toList();
+    return Future.wait(
+      records.map((client) async {
+        final response = await _api.get<Map<String, dynamic>>(
+          'clients/${client.id}/balance/',
+        );
+        return ClientRecord(
+          id: client.id,
+          name: client.name,
+          phone: client.phone,
+          position: AccountPosition.fromJson(response.data!),
+        );
+      }),
+    );
+  }
 
   Future<void> saveClient({
     String? id,
@@ -36,6 +54,14 @@ class ClientsRepository {
   }
 
   Future<void> deleteClient(String id) => _api.delete('clients/$id/');
+
+  Future<Uint8List> statementPdf(String clientId, String language) async =>
+      Uint8List.fromList(
+        await _api.download(
+          'clients/$clientId/statement/pdf/',
+          query: {'lang': language},
+        ),
+      );
 
   Future<ClientStatementData> statement(
     String clientId,
@@ -97,6 +123,7 @@ class ClientsRepository {
     required double amount,
     required DateTime date,
     required String description,
+    String? paymentMethod,
     String? shipId,
     String? tripId,
   }) => _api.post(
@@ -107,8 +134,26 @@ class ClientsRepository {
       'amount': amount.toStringAsFixed(2),
       'transaction_date': formatApiDate(date),
       'description': description,
+      if (type == 'CLIENT_PAYMENT' && paymentMethod != null)
+        'payment_method': paymentMethod,
       if (type == 'CLIENT_PURCHASE') 'ship': shipId,
       if (type == 'CLIENT_PURCHASE') 'trip': tripId,
     },
   );
+
+  Future<void> updateTransaction(
+    String id, {
+    required double amount,
+    required String description,
+    required String? paymentMethod,
+  }) async {
+    final data = <String, dynamic>{
+      'amount': amount.toStringAsFixed(2),
+      'description': description,
+      'payment_method': paymentMethod,
+    };
+    await _api.patch('transactions/$id/', data: data);
+  }
+
+  Future<void> deleteTransaction(String id) => _api.delete('transactions/$id/');
 }

@@ -24,9 +24,15 @@ class AdministrationRepository {
     required String username,
     required String password,
     required String phone,
+    required String role,
   }) => _api.post(
     'users/',
-    data: {'username': username, 'password': password, 'phone': phone},
+    data: {
+      'username': username,
+      'password': password,
+      'phone': phone,
+      'role': role,
+    },
   );
 
   Future<void> setActive(int id, bool active) =>

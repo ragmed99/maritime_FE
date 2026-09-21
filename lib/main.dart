@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'app/app.dart';
 import 'core/config/app_environment.dart';
 import 'core/network/api_client.dart';
+import 'core/offline/offline_store.dart';
 import 'core/storage/token_storage.dart';
 import 'features/auth/application/auth_controller.dart';
 import 'features/administration/data/administration_repository.dart';
@@ -16,6 +17,7 @@ import 'features/reports/data/reports_repository.dart';
 import 'features/owners/application/owners_controller.dart';
 import 'features/owners/data/owners_repository.dart';
 import 'features/settings/application/locale_controller.dart';
+import 'features/settings/application/theme_controller.dart';
 import 'features/ships/application/ships_controller.dart';
 import 'features/ships/data/ships_repository.dart';
 import 'features/transactions/application/transactions_controller.dart';
@@ -24,7 +26,12 @@ import 'features/transactions/data/transactions_repository.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final tokenStorage = TokenStorage();
-  final apiClient = ApiClient(AppEnvironment.current, tokenStorage);
+  final offlineStore = await OfflineStore.open();
+  final apiClient = ApiClient(
+    AppEnvironment.current,
+    tokenStorage,
+    offlineStore: offlineStore,
+  );
   final authController = AuthController(apiClient, tokenStorage);
   final administrationRepository = AdministrationRepository(apiClient);
   final dashboardController = DashboardController(
@@ -40,9 +47,13 @@ Future<void> main() async {
   );
   final reportsRepository = ReportsRepository(apiClient);
   final localeController = LocaleController();
-  await localeController.initialize();
+  final themeController = ThemeController();
+  await Future.wait([
+    localeController.initialize(),
+    themeController.initialize(),
+  ]);
   runApp(
-    MaritimeApp(
+    TarFishingApp(
       authController: authController,
       dashboardController: dashboardController,
       shipsController: shipsController,
@@ -53,6 +64,7 @@ Future<void> main() async {
       reportsRepository: reportsRepository,
       administrationRepository: administrationRepository,
       localeController: localeController,
+      themeController: themeController,
     ),
   );
   await authController.initialize();

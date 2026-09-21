@@ -1,4 +1,4 @@
-# Maritime Frontend
+# Tar Fishing Frontend
 
 Flutter foundation targeting Android, iOS, and Windows. French is the default
 locale; Arabic is supported with Flutter's automatic RTL directionality.
@@ -27,6 +27,28 @@ flutter build windows --release --dart-define=APP_ENV=production
 flutter build linux --release --dart-define=APP_ENV=production
 flutter build ios --release --dart-define=APP_ENV=production
 ```
+
+## Android release signing
+
+Never publish an APK signed with Flutter's debug key. Create a private upload
+keystore and add `android/key.properties` (ignored by Git):
+
+```properties
+storePassword=<store-password>
+keyPassword=<key-password>
+keyAlias=upload
+storeFile=/absolute/path/to/upload-keystore.jks
+```
+
+Then build the Play Store bundle:
+
+```bash
+flutter build appbundle --release --dart-define=APP_ENV=production
+```
+
+Keep the keystore and passwords backed up outside the repository. Without
+`key.properties`, local release builds remain unsigned rather than using an
+unsafe debug signature.
 
 `PRODUCTION_API_URL` remains available for controlled production overrides, but
 production validation requires an absolute HTTPS URL:

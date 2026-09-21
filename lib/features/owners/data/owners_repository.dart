@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/models/account_position.dart';
+import '../../dashboard/domain/dashboard_models.dart';
 import '../domain/owner_models.dart';
 
 class OwnersRepository {
@@ -38,12 +41,44 @@ class OwnersRepository {
   Future<AccountPosition> balance(String id) async => AccountPosition.fromJson(
     (await _api.get<Map<String, dynamic>>('owners/$id/balance/')).data!,
   );
-  Future<List<OwnerTransaction>> transactions(String id) async => (await _rows(
-    'transactions/?owner_account=$id',
-  )).map(OwnerTransaction.fromJson).toList();
-  Future<List<OwnerShip>> ships(String id) async => (await _rows(
-    'ships/',
-  )).where((row) => row['owner'] == id).map(OwnerShip.fromJson).toList();
+  Future<Uint8List> statementPdf(
+    String id, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async => Uint8List.fromList(
+    await _api.download(
+      'owners/$id/statement/pdf/',
+      query: {
+        if (startDate != null)
+          'start_date': startDate.toIso8601String().split('T').first,
+        if (endDate != null)
+          'end_date': endDate.toIso8601String().split('T').first,
+      },
+    ),
+  );
+  Future<List<OwnerTransaction>> transactions(String id) async {
+    return (await _rows(
+      'transactions/?owner_account=$id',
+    )).map(OwnerTransaction.fromJson).toList();
+  }
+
+  Future<List<OwnerShip>> ships(String id) async {
+    final rows = (await _rows(
+      'ships/',
+    )).where((row) => row['owner'] == id).toList();
+    return Future.wait(
+      rows.map((row) async {
+        final financials = (await _api.get<Map<String, dynamic>>(
+          'ships/${row['id']}/financials/',
+        )).data!;
+        return OwnerShip.fromJson(
+          row,
+          outcome: moneyFromJson(financials['total_revenue']),
+        );
+      }),
+    );
+  }
+
   Future<void> addTransaction({
     required String ownerId,
     required String type,
@@ -60,4 +95,18 @@ class OwnersRepository {
       'description': description,
     },
   );
+
+  Future<void> updateTransaction(
+    String id, {
+    required double amount,
+    required String description,
+  }) async {
+    final data = <String, dynamic>{
+      'amount': amount.toStringAsFixed(2),
+      'description': description,
+    };
+    await _api.patch('transactions/$id/', data: data);
+  }
+
+  Future<void> deleteTransaction(String id) => _api.delete('transactions/$id/');
 }

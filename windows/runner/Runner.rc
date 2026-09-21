@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.maritime" "\0"
-            VALUE "FileDescription", "TAR FISHING" "\0"
+            VALUE "CompanyName", "Tar Fishing" "\0"
+            VALUE "FileDescription", "Tar Fishing" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "maritime_frontend" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.maritime. All rights reserved." "\0"
-            VALUE "OriginalFilename", "maritime_frontend.exe" "\0"
-            VALUE "ProductName", "TAR FISHING" "\0"
+            VALUE "InternalName", "Tar Fishing" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Tar Fishing. All rights reserved." "\0"
+            VALUE "OriginalFilename", "tar_fishing.exe" "\0"
+            VALUE "ProductName", "Tar Fishing" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -5,6 +5,7 @@ class ManagedUser {
     required this.phone,
     required this.isActive,
     required this.isStaff,
+    required this.role,
   });
   factory ManagedUser.fromJson(Map<String, dynamic> json) => ManagedUser(
     id: json['id'] as int,
@@ -12,12 +13,14 @@ class ManagedUser {
     phone: json['phone'] as String? ?? '',
     isActive: json['is_active'] as bool? ?? true,
     isStaff: json['is_staff'] as bool? ?? false,
+    role: json['role'] as String? ?? 'USER',
   );
   final int id;
   final String username;
   final String phone;
   final bool isActive;
   final bool isStaff;
+  final String role;
 }
 
 class AuditRecord {
