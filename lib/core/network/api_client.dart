@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../features/auth/domain/current_user.dart';
 import '../config/app_environment.dart';
@@ -16,7 +17,7 @@ class ApiAuthException implements Exception {
   final ApiAuthError kind;
 }
 
-class ApiClient {
+class ApiClient extends ChangeNotifier {
   ApiClient(
     AppEnvironment environment,
     this._tokenStorage, {
@@ -35,9 +36,9 @@ class ApiClient {
     );
     if (dio == null) {
       Connectivity().onConnectivityChanged.listen((results) {
-        if (!results.contains(ConnectivityResult.none)) {
-          unawaited(syncPending());
-        }
+        final disconnected = results.contains(ConnectivityResult.none);
+        _setOffline(disconnected);
+        if (!disconnected) unawaited(synchronizeAll());
       });
     }
   }
@@ -47,7 +48,20 @@ class ApiClient {
   final OfflineStore _offlineStore;
   Future<bool>? _refreshInProgress;
   Future<void>? _syncInProgress;
+  CurrentUser? _activeUser;
+  bool _syncing = false;
+  bool _offline = false;
   FutureOr<void> Function()? onSessionExpired;
+
+  bool get isSyncing => _syncing;
+  bool get isOffline => _offline;
+  bool get hasPendingSync => pendingSyncCount > 0;
+
+  void _setOffline(bool value) {
+    if (_offline == value) return;
+    _offline = value;
+    notifyListeners();
+  }
 
   static String _apiRoot(String configuredUrl) {
     final normalized = configuredUrl.endsWith('/')
@@ -164,8 +178,9 @@ class ApiClient {
     final response = await get<Map<String, dynamic>>('auth/me/');
     final user = CurrentUser.fromJson(response.data!);
     _offlineStore.setScope(user.id);
+    _activeUser = user;
     await syncPending();
-    unawaited(_warmOfflineData(user));
+    await _warmOfflineData(user);
     return user;
   }
 
@@ -194,8 +209,12 @@ class ApiClient {
           get<Map<String, dynamic>>('trips/${trip['id']}/financials/'),
         for (final client in clients)
           get<Map<String, dynamic>>('clients/${client['id']}/balance/'),
+        for (final client in clients)
+          get<Map<String, dynamic>>('clients/${client['id']}/statement/'),
         for (final owner in owners)
           get<Map<String, dynamic>>('owners/${owner['id']}/balance/'),
+        for (final owner in owners)
+          _allRows('transactions/?owner_account=${owner['id']}'),
         for (final partner in partners)
           get<Map<String, dynamic>>('partners/${partner['id']}/balance/'),
       ]);
@@ -235,11 +254,13 @@ class ApiClient {
     final key = _cacheKey(path, query);
     try {
       final response = await _dio.get<T>(path, queryParameters: query);
+      _setOffline(false);
       _offlineStore.cache(key, response.data);
-      unawaited(syncPending());
+      if (hasPendingSync) unawaited(syncPending());
       return response;
     } on DioException catch (error) {
       if (!_isOffline(error)) rethrow;
+      _setOffline(true);
       final cached = _offlineStore.read(key);
       if (cached == null) rethrow;
       return Response<T>(
@@ -275,16 +296,19 @@ class ApiClient {
         data: data is Map ? payload : data,
         options: Options(method: method),
       );
+      _setOffline(false);
       final result = response.data is Map
           ? Map<String, dynamic>.from(response.data! as Map)
           : payload;
       _offlineStore.applyMutation(method, path, payload, result);
-      unawaited(syncPending());
+      if (hasPendingSync) unawaited(syncPending());
       return response;
     } on DioException catch (error) {
       if (!_isOffline(error)) rethrow;
+      _setOffline(true);
       if (path.startsWith('users/') || path.startsWith('config/')) rethrow;
       _offlineStore.enqueue(method, path, data is Map ? payload : data);
+      notifyListeners();
       final result = <String, dynamic>{
         ...payload,
         'created_at': DateTime.now().toUtc().toIso8601String(),
@@ -301,9 +325,25 @@ class ApiClient {
     }
   }
 
-  Future<void> syncPending() => _syncInProgress ??= _performSync().whenComplete(
-    () => _syncInProgress = null,
-  );
+  Future<void> syncPending() {
+    final active = _syncInProgress;
+    if (active != null) return active;
+    _syncing = true;
+    notifyListeners();
+    final operation = _performSync().whenComplete(() {
+      _syncing = false;
+      _syncInProgress = null;
+      notifyListeners();
+    });
+    _syncInProgress = operation;
+    return operation;
+  }
+
+  Future<void> synchronizeAll() async {
+    await syncPending();
+    final user = _activeUser;
+    if (!_offline && user != null) await _warmOfflineData(user);
+  }
 
   Future<void> _performSync() async {
     for (final request in _offlineStore.queued()) {
@@ -313,7 +353,9 @@ class ApiClient {
           data: request.data,
           options: Options(method: request.method),
         );
+        _setOffline(false);
         _offlineStore.completed(request.id);
+        notifyListeners();
       } on DioException catch (error) {
         final status = error.response?.statusCode;
         if (request.method == 'POST' && status == 400) {
@@ -323,6 +365,7 @@ class ApiClient {
             try {
               await _dio.get<dynamic>('${request.path}$id/');
               _offlineStore.completed(request.id);
+              notifyListeners();
               continue;
             } on DioException {
               // This is a genuine conflict, not an already-uploaded UUID.
@@ -330,6 +373,7 @@ class ApiClient {
           }
         }
         _offlineStore.failed(request.id, error.message ?? error.toString());
+        if (_isOffline(error)) _setOffline(true);
         if (_isOffline(error) || error.response?.statusCode == 401) return;
         // Preserve rejected operations for inspection instead of losing data.
         return;

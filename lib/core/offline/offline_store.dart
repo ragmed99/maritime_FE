@@ -205,15 +205,52 @@ class OfflineStore {
       final key = row['cache_key'] as String;
       final decoded = jsonDecode(row['body'] as String);
       var changed = false;
-      if (method == 'POST' && _isResourceList(key, resource)) {
+      if (method == 'POST' &&
+          _isResourceList(key, resource) &&
+          (resource != 'transactions' ||
+              _matchesTransactionFilter(key, payload))) {
         changed = _prepend(decoded, result);
       } else if (id != null && (method == 'PATCH' || method == 'DELETE')) {
         changed = _changeById(decoded, id, payload, delete: method == 'DELETE');
       }
       if (resource == 'transactions' && method == 'POST') {
+        final clientId = payload['client']?.toString();
+        if (clientId != null && key.contains('clients/$clientId/statement/')) {
+          final statementRows = decoded is Map<String, dynamic>
+              ? decoded['transactions']
+              : null;
+          final createdAt =
+              (result['created_at'] ?? DateTime.now().toUtc().toIso8601String())
+                  .toString();
+          changed =
+              _prepend(statementRows, {
+                ...result,
+                'date': payload['transaction_date'],
+                'time': createdAt.contains('T')
+                    ? createdAt.split('T').last.substring(0, 5)
+                    : '00:00',
+                'ship': payload['ship'] == null
+                    ? null
+                    : {
+                        'id': payload['ship'],
+                        'name': _cachedName(
+                          'ships',
+                          payload['ship']?.toString(),
+                        ),
+                      },
+                'trip': payload['trip'] == null
+                    ? null
+                    : {
+                        'id': payload['trip'],
+                        'departure_date': _cachedTripDate(
+                          payload['trip']?.toString(),
+                        ),
+                      },
+              }) ||
+              changed;
+        }
         final tripId = payload['trip']?.toString();
         if (tripId != null && key.contains('trips/$tripId/purchases/')) {
-          final clientId = payload['client']?.toString();
           changed =
               _prepend(decoded, {
                 'id': result['id'],
@@ -235,6 +272,25 @@ class OfflineStore {
   bool _isResourceList(String key, String resource) {
     final path = key.split('::').last.split('?').first;
     return path == '$resource/' || path.endsWith('/$resource/');
+  }
+
+  bool _matchesTransactionFilter(
+    String scopedKey,
+    Map<String, dynamic> payload,
+  ) {
+    final raw = scopedKey.split('::').last;
+    final uri = Uri.parse(raw);
+    final query = uri.queryParameters;
+    bool matches(String parameter, String payloadKey) =>
+        query[parameter] == null ||
+        query[parameter] == payload[payloadKey]?.toString();
+    return matches('owner_account', 'owner') &&
+        matches('owner', 'owner') &&
+        matches('partner', 'partner') &&
+        matches('client', 'client') &&
+        matches('ship', 'ship') &&
+        matches('trip', 'trip') &&
+        matches('transaction_type', 'transaction_type');
   }
 
   bool _prepend(Object? value, Map<String, dynamic> item) {
@@ -307,6 +363,24 @@ class OfflineStore {
       if (list is List) {
         for (final item in list.whereType<Map>()) {
           if ('${item['id']}' == id) return item['name']?.toString();
+        }
+      }
+    }
+    return null;
+  }
+
+  String? _cachedTripDate(String? id) {
+    if (id == null) return null;
+    final rows = _database.select(
+      'SELECT body FROM response_cache WHERE cache_key LIKE ?',
+      ['$_scope::trips/%'],
+    );
+    for (final row in rows) {
+      final decoded = jsonDecode(row['body'] as String);
+      final list = decoded is Map ? decoded['results'] : decoded;
+      if (list is List) {
+        for (final item in list.whereType<Map>()) {
+          if ('${item['id']}' == id) return item['departure_date']?.toString();
         }
       }
     }

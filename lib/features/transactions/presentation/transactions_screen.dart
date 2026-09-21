@@ -147,17 +147,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 _TransactionTable(
                   rows: widget.controller.rows,
                   lookups: lookups,
-                  onEdit: _edit,
-                  onDelete: _delete,
                 )
               else
                 ...widget.controller.rows.map(
-                  (row) => _TransactionCard(
-                    row: row,
-                    lookups: lookups,
-                    onEdit: () => _edit(row),
-                    onDelete: () => _delete(row),
-                  ),
+                  (row) => _TransactionCard(row: row, lookups: lookups),
                 ),
               if (widget.controller.hasMore)
                 Padding(
@@ -231,70 +224,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       await widget.controller.load(withFilters: merged);
     }
   }
-
-  Future<void> _edit(LedgerTransaction row) async {
-    final input = await showDialog<_EditInput>(
-      context: context,
-      builder: (_) => _EditDialog(row: row),
-    );
-    if (input == null) return;
-    try {
-      await widget.controller.update(
-        row,
-        amount: input.amount,
-        date: input.date,
-        description: input.description,
-        reference: input.reference,
-      );
-    } catch (_) {
-      if (mounted) _error(AppLocalizations.of(context).transactionSaveError);
-    }
-  }
-
-  Future<void> _delete(LedgerTransaction row) async {
-    final s = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AppDialogShell(
-        title: s.deleteTransaction,
-        icon: Icons.delete_outline,
-        content: Text(s.deleteTransactionConfirmation),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(s.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(s.delete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    try {
-      await widget.controller.delete(row.id);
-    } catch (_) {
-      if (mounted) _error(s.transactionDeleteError);
-    }
-  }
-
-  void _error(String message) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(message)));
 }
 
 class _TransactionCard extends StatelessWidget {
-  const _TransactionCard({
-    required this.row,
-    required this.lookups,
-    required this.onEdit,
-    required this.onDelete,
-  });
+  const _TransactionCard({required this.row, required this.lookups});
   final LedgerTransaction row;
   final TransactionLookups lookups;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -322,28 +257,10 @@ class _TransactionCard extends StatelessWidget {
               if (row.recordedBy != null) '${s.recordedBy}: ${row.recordedBy}',
             ].join('\n'),
           ),
-          trailing: SizedBox(
-            width: 96,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                MoneyText(
-                  row.amount,
-                  locale: locale,
-                  style: TextStyle(color: tint, fontWeight: FontWeight.w700),
-                ),
-                PopupMenuButton<String>(
-                  padding: EdgeInsets.zero,
-                  onSelected: (value) =>
-                      value == 'edit' ? onEdit() : onDelete(),
-                  itemBuilder: (_) => [
-                    PopupMenuItem(value: 'edit', child: Text(s.edit)),
-                    PopupMenuItem(value: 'delete', child: Text(s.delete)),
-                  ],
-                ),
-              ],
-            ),
+          trailing: MoneyText(
+            row.amount,
+            locale: locale,
+            style: TextStyle(color: tint, fontWeight: FontWeight.w700),
           ),
         ),
       ),
@@ -352,16 +269,9 @@ class _TransactionCard extends StatelessWidget {
 }
 
 class _TransactionTable extends StatelessWidget {
-  const _TransactionTable({
-    required this.rows,
-    required this.lookups,
-    required this.onEdit,
-    required this.onDelete,
-  });
+  const _TransactionTable({required this.rows, required this.lookups});
   final List<LedgerTransaction> rows;
   final TransactionLookups lookups;
-  final ValueChanged<LedgerTransaction> onEdit;
-  final ValueChanged<LedgerTransaction> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -379,7 +289,6 @@ class _TransactionTable extends StatelessWidget {
             s.description,
             s.relatedTo,
             s.recordedBy,
-            s.actions,
           ].map((label) => DataColumn(label: Text(label))).toList(),
           rows: rows
               .map(
@@ -399,22 +308,6 @@ class _TransactionTable extends StatelessWidget {
                     DataCell(Text(row.description)),
                     DataCell(Text(_relations(s, row, lookups))),
                     DataCell(Text(row.recordedBy ?? '—')),
-                    DataCell(
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () => onEdit(row),
-                            tooltip: s.edit,
-                            icon: const Icon(Icons.edit_outlined),
-                          ),
-                          IconButton(
-                            onPressed: () => onDelete(row),
-                            tooltip: s.delete,
-                            icon: const Icon(Icons.delete_outline),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               )
@@ -444,117 +337,6 @@ String _relations(
   add(s.partners, lookups.name(lookups.partners, row.partnerId));
   add(s.owner, lookups.name(lookups.owners, row.ownerId));
   return parts.isEmpty ? '—' : parts.join(' · ');
-}
-
-class _EditInput {
-  const _EditInput(this.amount, this.date, this.description, this.reference);
-  final double amount;
-  final DateTime date;
-  final String description;
-  final String reference;
-}
-
-class _EditDialog extends StatefulWidget {
-  const _EditDialog({required this.row});
-  final LedgerTransaction row;
-  @override
-  State<_EditDialog> createState() => _EditDialogState();
-}
-
-class _EditDialogState extends State<_EditDialog> {
-  late final amount = TextEditingController(
-    text: widget.row.amount.toStringAsFixed(2),
-  );
-  late final description = TextEditingController(text: widget.row.description);
-  late final reference = TextEditingController(text: widget.row.reference);
-  late DateTime date = widget.row.date;
-  String? error;
-
-  @override
-  void dispose() {
-    amount.dispose();
-    description.dispose();
-    reference.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppLocalizations.of(context);
-    return AppDialogShell(
-      title: s.editTransaction,
-      icon: _transactionIcon(widget.row.type),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              transactionTypeLabel(s, widget.row.type),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: amount,
-            decoration: InputDecoration(labelText: s.amountMru),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: description,
-            decoration: InputDecoration(labelText: s.description),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: reference,
-            decoration: InputDecoration(labelText: s.reference),
-          ),
-          const SizedBox(height: 10),
-          AppDateField(
-            label: s.date,
-            value: date,
-            onChanged: (value) => setState(() => date = value),
-          ),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(
-                error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(s.cancel),
-        ),
-        FilledButton(
-          onPressed: () {
-            final value = double.tryParse(amount.text.replaceAll(',', '.'));
-            if (value == null || value <= 0) {
-              setState(() => error = s.validAmountRequired);
-              return;
-            }
-            Navigator.pop(
-              context,
-              _EditInput(
-                value,
-                date,
-                description.text.trim(),
-                reference.text.trim(),
-              ),
-            );
-          },
-          child: Text(s.save),
-        ),
-      ],
-    );
-  }
 }
 
 class _FilterDialog extends StatefulWidget {

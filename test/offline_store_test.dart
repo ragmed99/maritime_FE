@@ -62,4 +62,40 @@ void main() {
     final cached = store.read('clients/')! as Map<String, dynamic>;
     expect(cached['results'], isEmpty);
   });
+
+  test('offline transactions update only matching cached account tables', () {
+    final store = OfflineStore.memory()..setScope('user');
+    store.cache('transactions/?owner_account=owner-1', {
+      'count': 0,
+      'results': <dynamic>[],
+    });
+    store.cache('transactions/?owner_account=owner-2', {
+      'count': 0,
+      'results': <dynamic>[],
+    });
+    store.cache('clients/client-1/statement/', {
+      'transactions': {'count': 0, 'results': <dynamic>[]},
+    });
+    final payload = {
+      'id': 'transaction-1',
+      'owner': 'owner-1',
+      'client': 'client-1',
+      'transaction_type': 'CLIENT_PAYMENT',
+      'amount': '50.00',
+      'transaction_date': '2026-09-21',
+      'description': 'offline payment',
+    };
+
+    store.applyMutation('POST', 'transactions/', payload, {
+      ...payload,
+      'created_at': '2026-09-21T12:30:00Z',
+    });
+
+    final matching = store.read('transactions/?owner_account=owner-1') as Map;
+    final other = store.read('transactions/?owner_account=owner-2') as Map;
+    final statement = store.read('clients/client-1/statement/') as Map;
+    expect(matching['count'], 1);
+    expect(other['count'], 0);
+    expect((statement['transactions'] as Map)['count'], 1);
+  });
 }

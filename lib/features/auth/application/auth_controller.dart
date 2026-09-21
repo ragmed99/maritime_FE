@@ -21,6 +21,8 @@ class AuthController extends ChangeNotifier {
   CurrentUser? currentUser;
   bool isLoading = false;
 
+  ApiClient get api => _api;
+
   Future<void> initialize() async {
     final access = await _storage.readAccessToken();
     final refresh = await _storage.readRefreshToken();

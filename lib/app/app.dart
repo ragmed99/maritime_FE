@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../core/theme/app_theme.dart';
+import '../core/widgets/sync_status_indicator.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/administration/data/administration_repository.dart';
 import '../features/auth/presentation/login_screen.dart';
@@ -68,6 +69,14 @@ class TarFishingApp extends StatelessWidget {
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
         themeMode: themeController.mode,
+        builder: (context, child) => Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            ?child,
+            if (authController.status == AuthStatus.authenticated)
+              SyncStatusIndicator(api: authController.api),
+          ],
+        ),
         home: switch (authController.status) {
           AuthStatus.initializing => const SplashScreen(),
           AuthStatus.unauthenticated => LoginScreen(controller: authController),
