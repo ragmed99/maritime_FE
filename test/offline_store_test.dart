@@ -98,4 +98,60 @@ void main() {
     expect(other['count'], 0);
     expect((statement['transactions'] as Map)['count'], 1);
   });
+
+  test('offline trip, client and purchase have usable local derived data', () {
+    final store = OfflineStore.memory()..setScope('user');
+    store.cache('clients/', {'count': 0, 'results': <dynamic>[]});
+    store.cache('owners/', {
+      'count': 1,
+      'results': [
+        {'id': 'owner-1', 'name': 'Owner'},
+      ],
+    });
+    store.cache('ships/', {
+      'count': 1,
+      'results': [
+        {'id': 'ship-1', 'owner': 'owner-1', 'name': 'Ship'},
+      ],
+    });
+    store.cache('trips/', {'count': 0, 'results': <dynamic>[]});
+    store.cache('transactions/', {'count': 0, 'results': <dynamic>[]});
+
+    const client = {'id': 'client-1', 'name': 'Offline client', 'phone': ''};
+    store.applyMutation('POST', 'clients/', client, client);
+    const trip = {
+      'id': 'trip-1',
+      'ship': 'ship-1',
+      'departure_date': '2026-09-21',
+    };
+    store.applyMutation('POST', 'trips/', trip, trip);
+    const purchase = {
+      'id': 'purchase-1',
+      'transaction_type': 'CLIENT_PURCHASE',
+      'ship': 'ship-1',
+      'trip': 'trip-1',
+      'client': 'client-1',
+      'amount': '1200.00',
+      'quantity': '3.00',
+      'unit_price': '400.00',
+      'transaction_date': '2026-09-21',
+      'description': 'fish',
+      'created_at': '2026-09-21T12:00:00Z',
+    };
+    store.applyMutation('POST', 'transactions/', purchase, purchase);
+
+    expect(
+      (store.read('clients/client-1/balance/') as Map)['balance'],
+      '1200.00',
+    );
+    expect(
+      (store.read('trips/trip-1/financials/') as Map)['revenue'],
+      '1200.00',
+    );
+    expect(
+      (store.read('ships/ship-1/financials/') as Map)['profit'],
+      '1200.00',
+    );
+    expect((store.read('trips/trip-1/purchases/') as List), hasLength(1));
+  });
 }

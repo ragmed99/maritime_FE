@@ -267,6 +267,225 @@ class OfflineStore {
       }
       if (changed) cache(key.split('::').last, decoded);
     }
+    if (method == 'POST') _seedCreatedResource(resource, result);
+    if (resource == 'transactions') _recalculateDerivedCaches();
+  }
+
+  void _seedCreatedResource(String resource, Map<String, dynamic> result) {
+    final id = result['id']?.toString();
+    if (id == null) return;
+    const zeroBalance = {
+      'they_owe_us': '0.00',
+      'we_owe_them': '0.00',
+      'balance': '0.00',
+    };
+    if (resource == 'clients') {
+      cache('clients/$id/balance/', {...zeroBalance, 'client_id': id});
+      cache('clients/$id/statement/', {
+        'subject': result,
+        'summary': {
+          'total_purchases': '0.00',
+          'total_payments': '0.00',
+          'current_balance': '0.00',
+        },
+        'transactions': {'count': 0, 'next': null, 'results': <dynamic>[]},
+      });
+    } else if (resource == 'owners') {
+      cache('owners/$id/balance/', {...zeroBalance, 'owner_id': id});
+    } else if (resource == 'partners') {
+      cache('partners/$id/balance/', {...zeroBalance, 'partner_id': id});
+    } else if (resource == 'ships') {
+      cache('ships/$id/financials/', {
+        'ship_id': id,
+        'total_revenue': '0.00',
+        'total_expenses': '0.00',
+        'profit': '0.00',
+        'has_unpriced_purchases': false,
+      });
+    } else if (resource == 'trips') {
+      cache('trips/$id/financials/', {
+        'trip_id': id,
+        'revenue': '0.00',
+        'expenses': '0.00',
+        'remaining': '0.00',
+        'profit': '0.00',
+        'has_unpriced_purchases': false,
+      });
+      cache('trips/$id/purchases/', <dynamic>[]);
+    }
+  }
+
+  void _recalculateDerivedCaches() {
+    final transactions = <String, Map<String, dynamic>>{};
+    for (final row in _database.select(
+      'SELECT cache_key, body FROM response_cache WHERE cache_key LIKE ?',
+      ['$_scope::%transactions/%'],
+    )) {
+      final rawKey = (row['cache_key'] as String).split('::').last;
+      final uri = Uri.parse(rawKey);
+      if (!uri.path.endsWith('transactions/') ||
+          uri.queryParameters.keys.any((key) => key != 'page')) {
+        continue;
+      }
+      final decoded = jsonDecode(row['body'] as String);
+      final items = decoded is Map ? decoded['results'] : decoded;
+      if (items is! List) continue;
+      for (final item in items.whereType<Map>()) {
+        final value = Map<String, dynamic>.from(item);
+        final id = value['id']?.toString();
+        if (id != null) transactions[id] = value;
+      }
+    }
+
+    double amount(Map<String, dynamic> row) =>
+        double.tryParse('${row['amount'] ?? 0}') ?? 0;
+    Iterable<Map<String, dynamic>> forField(String field, String id) =>
+        transactions.values.where((row) => '${row[field]}' == id);
+    void balance(String path, String entityKey, String id, double value) {
+      cache(path, {
+        entityKey: id,
+        'they_owe_us': value > 0 ? value.toStringAsFixed(2) : '0.00',
+        'we_owe_them': value < 0 ? (-value).toStringAsFixed(2) : '0.00',
+        'balance': value.toStringAsFixed(2),
+      });
+    }
+
+    for (final client in _cachedResourceItems('clients')) {
+      final id = client['id']?.toString();
+      if (id == null) continue;
+      var value = 0.0;
+      for (final row in forField('client', id)) {
+        value += row['transaction_type'] == 'CLIENT_PURCHASE'
+            ? amount(row)
+            : row['transaction_type'] == 'CLIENT_PAYMENT'
+            ? -amount(row)
+            : 0;
+      }
+      balance('clients/$id/balance/', 'client_id', id, value);
+    }
+    for (final partner in _cachedResourceItems('partners')) {
+      final id = partner['id']?.toString();
+      if (id == null) continue;
+      var value = 0.0;
+      for (final row in forField('partner', id)) {
+        value +=
+            const {
+              'PARTNER_LOAN_GIVEN',
+              'PARTNER_REPAYMENT_PAID',
+            }.contains(row['transaction_type'])
+            ? amount(row)
+            : const {
+                'PARTNER_LOAN_RECEIVED',
+                'PARTNER_REPAYMENT_RECEIVED',
+              }.contains(row['transaction_type'])
+            ? -amount(row)
+            : 0;
+      }
+      balance('partners/$id/balance/', 'partner_id', id, value);
+    }
+
+    final ships = _cachedResourceItems('ships');
+    final trips = _cachedResourceItems('trips');
+    for (final ship in ships) {
+      final id = ship['id']?.toString();
+      if (id == null) continue;
+      final rows = forField('ship', id);
+      final revenue = rows
+          .where((row) => row['transaction_type'] == 'CLIENT_PURCHASE')
+          .fold<double>(0, (sum, row) => sum + amount(row));
+      final expenses = rows
+          .where((row) => row['transaction_type'] == 'SHIP_EXPENSE')
+          .fold<double>(0, (sum, row) => sum + amount(row));
+      final unpriced = rows.any(
+        (row) =>
+            row['transaction_type'] == 'CLIENT_PURCHASE' &&
+            row['unit_price'] == null,
+      );
+      cache('ships/$id/financials/', {
+        'ship_id': id,
+        'total_revenue': revenue.toStringAsFixed(2),
+        'total_expenses': expenses.toStringAsFixed(2),
+        'profit': (revenue - expenses).toStringAsFixed(2),
+        'has_unpriced_purchases': unpriced,
+      });
+    }
+    for (final trip in trips) {
+      final id = trip['id']?.toString();
+      if (id == null) continue;
+      final rows = forField('trip', id);
+      final revenue = rows
+          .where((row) => row['transaction_type'] == 'CLIENT_PURCHASE')
+          .fold<double>(0, (sum, row) => sum + amount(row));
+      final expenses = rows
+          .where((row) => row['transaction_type'] == 'SHIP_EXPENSE')
+          .fold<double>(0, (sum, row) => sum + amount(row));
+      final remaining = revenue - expenses;
+      cache('trips/$id/financials/', {
+        'trip_id': id,
+        'revenue': revenue.toStringAsFixed(2),
+        'expenses': expenses.toStringAsFixed(2),
+        'remaining': remaining.toStringAsFixed(2),
+        'profit': remaining.toStringAsFixed(2),
+        'has_unpriced_purchases': rows.any(
+          (row) =>
+              row['transaction_type'] == 'CLIENT_PURCHASE' &&
+              row['unit_price'] == null,
+        ),
+      });
+    }
+    for (final owner in _cachedResourceItems('owners')) {
+      final id = owner['id']?.toString();
+      if (id == null) continue;
+      final shipIds = ships
+          .where((ship) => '${ship['owner']}' == id)
+          .map((ship) => '${ship['id']}')
+          .toSet();
+      var value = 0.0;
+      for (final row in transactions.values) {
+        if ('${row['owner']}' == id) {
+          value += row['transaction_type'] == 'OWNER_DEPOSIT'
+              ? amount(row)
+              : row['transaction_type'] == 'OWNER_WITHDRAWAL'
+              ? -amount(row)
+              : 0;
+        } else if (shipIds.contains('${row['ship']}') &&
+            row['transaction_type'] == 'CLIENT_PURCHASE') {
+          value += amount(row);
+        }
+      }
+      // Owner balances use the opposite direction from clients and partners.
+      cache('owners/$id/balance/', {
+        'owner_id': id,
+        'they_owe_us': value < 0 ? (-value).toStringAsFixed(2) : '0.00',
+        'we_owe_them': value > 0 ? value.toStringAsFixed(2) : '0.00',
+        'balance': value.toStringAsFixed(2),
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _cachedResourceItems(String resource) {
+    final result = <String, Map<String, dynamic>>{};
+    final rows = _database.select(
+      'SELECT cache_key, body FROM response_cache WHERE cache_key LIKE ?',
+      ['$_scope::%$resource/%'],
+    );
+    for (final row in rows) {
+      final rawKey = (row['cache_key'] as String).split('::').last;
+      final uri = Uri.parse(rawKey);
+      if (!uri.path.endsWith('$resource/') ||
+          uri.queryParameters.keys.any((key) => key != 'page')) {
+        continue;
+      }
+      final decoded = jsonDecode(row['body'] as String);
+      final items = decoded is Map ? decoded['results'] : decoded;
+      if (items is! List) continue;
+      for (final item in items.whereType<Map>()) {
+        final value = Map<String, dynamic>.from(item);
+        final id = value['id']?.toString();
+        if (id != null) result[id] = value;
+      }
+    }
+    return result.values.toList();
   }
 
   bool _isResourceList(String key, String resource) {

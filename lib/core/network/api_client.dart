@@ -200,6 +200,7 @@ class ApiClient extends ChangeNotifier {
         _allRows('transactions/'),
         get<Map<String, dynamic>>('dashboard/'),
         get<Map<String, dynamic>>('financial-summary/'),
+        get<List<dynamic>>('trash/'),
         get<Map<String, dynamic>>('reports/ships/'),
         get<Map<String, dynamic>>('reports/clients/'),
         get<Map<String, dynamic>>('reports/partners/'),

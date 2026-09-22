@@ -24,6 +24,8 @@ import '../../ships/presentation/ships_screen.dart';
 import '../../statistics/presentation/ship_statistics_screen.dart';
 import '../../transactions/application/transactions_controller.dart';
 import '../../transactions/presentation/transactions_screen.dart';
+import '../../trash/data/trash_repository.dart';
+import '../../trash/presentation/trash_screen.dart';
 import 'dashboard_screen.dart';
 import 'money_owed_screen.dart';
 import '../application/dashboard_controller.dart';
@@ -191,6 +193,24 @@ class _MainShellState extends State<MainShell> {
       DashboardScreen(
         controller: widget.dashboardController,
         onNavigate: (index) {
+          if (index == 10) {
+            final arabic = Localizations.localeOf(context).languageCode == 'ar';
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(
+                    title: Text(arabic ? 'سلة المحذوفات' : 'Corbeille'),
+                    actions: const [HomeButton(), SizedBox(width: 8)],
+                  ),
+                  body: TrashScreen(
+                    repository: TrashRepository(widget.authController.api),
+                  ),
+                ),
+              ),
+            );
+            return;
+          }
           if (index == 9) {
             widget.dashboardController.load();
             final arabic = Localizations.localeOf(context).languageCode == 'ar';
@@ -377,6 +397,15 @@ class _UserHomeShell extends StatelessWidget {
                     ? 'الديون والقروض'
                     : 'Dettes et prêts',
                 MoneyOwedScreen(controller: dashboardController),
+              );
+              return;
+            case 10:
+              _open(
+                context,
+                Localizations.localeOf(context).languageCode == 'ar'
+                    ? 'سلة المحذوفات'
+                    : 'Corbeille',
+                TrashScreen(repository: TrashRepository(authController.api)),
               );
               return;
           }

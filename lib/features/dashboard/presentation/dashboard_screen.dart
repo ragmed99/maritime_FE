@@ -32,6 +32,7 @@ class DashboardScreen extends StatelessWidget {
         Icons.account_balance_wallet_outlined,
         9,
       ),
+      (isArabic ? 'سلة المحذوفات' : 'Corbeille', Icons.delete_outline, 10),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
