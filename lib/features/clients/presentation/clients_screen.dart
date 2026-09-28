@@ -378,6 +378,11 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                           icon: const Icon(Icons.payments_outlined),
                           label: Text(s.addPayment),
                         ),
+                        FilledButton.tonalIcon(
+                          onPressed: _addPurchase,
+                          icon: const Icon(Icons.shopping_cart_outlined),
+                          label: Text(s.addPurchase),
+                        ),
                         OutlinedButton.icon(
                           onPressed: _filter,
                           icon: const Icon(Icons.filter_alt_outlined),
@@ -467,6 +472,31 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
         date: DateTime.now(),
         description: input.description,
         paymentMethod: input.paymentMethod,
+      );
+      await _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).saveError)),
+        );
+      }
+    }
+  }
+
+  Future<void> _addPurchase() async {
+    final input = await showDialog<_PurchaseInput>(
+      context: context,
+      builder: (_) => _PurchaseDialog(ships: ships),
+    );
+    if (input == null) return;
+    try {
+      await widget.repository.addTransaction(
+        clientId: widget.client.id,
+        type: 'CLIENT_PURCHASE',
+        amount: input.amount,
+        date: input.date,
+        description: '',
+        shipId: input.shipId,
       );
       await _load();
     } catch (_) {
@@ -943,6 +973,94 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                 paymentMethod == 'OTHER' ? otherMethod.text.trim() : '',
               ),
             );
+          },
+          child: Text(s.save),
+        ),
+      ],
+    );
+  }
+}
+
+class _PurchaseInput {
+  const _PurchaseInput(this.date, this.shipId, this.amount);
+  final DateTime date;
+  final String shipId;
+  final double amount;
+}
+
+class _PurchaseDialog extends StatefulWidget {
+  const _PurchaseDialog({required this.ships});
+  final List<RelationOption> ships;
+  @override
+  State<_PurchaseDialog> createState() => _PurchaseDialogState();
+}
+
+class _PurchaseDialogState extends State<_PurchaseDialog> {
+  late final amount = TextEditingController();
+  DateTime date = DateTime.now();
+  String? shipId;
+  String? error;
+  @override
+  void dispose() {
+    amount.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    return AppDialogShell(
+      title: s.addPurchase,
+      icon: Icons.shopping_cart_outlined,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppDateField(
+            label: s.date,
+            value: date,
+            onChanged: (value) => setState(() => date = value),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String?>(
+            initialValue: shipId,
+            decoration: InputDecoration(labelText: s.shipName),
+            items: widget.ships
+                .map(
+                  (ship) =>
+                      DropdownMenuItem(value: ship.id, child: Text(ship.name)),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => shipId = value),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: amount,
+            decoration: InputDecoration(labelText: s.amountMru),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.cancel),
+        ),
+        FilledButton(
+          onPressed: () {
+            final value = double.tryParse(amount.text.replaceAll(',', '.'));
+            if (value == null || value <= 0 || shipId == null) {
+              setState(() => error = s.validAmountRequired);
+              return;
+            }
+            Navigator.pop(context, _PurchaseInput(date, shipId!, value));
           },
           child: Text(s.save),
         ),
