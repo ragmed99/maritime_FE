@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
+
 enum AppFlavor { development, staging, production }
 
 class AppEnvironment {
@@ -6,7 +8,15 @@ class AppEnvironment {
   final String apiBaseUrl;
 
   static AppEnvironment get current {
-    const name = String.fromEnvironment('APP_ENV', defaultValue: 'development');
+    // A release build (flutter build apk/appbundle/ios --release) with no
+    // explicit --dart-define=APP_ENV=... must never silently fall back to
+    // the localhost dev server — that only works on a developer's own
+    // machine and fails with an unhelpful "can't connect" for every real
+    // user. Debug/profile runs (flutter run) keep defaulting to development.
+    const name = String.fromEnvironment(
+      'APP_ENV',
+      defaultValue: kReleaseMode ? 'production' : 'development',
+    );
     const development = String.fromEnvironment(
       'DEV_API_URL',
       defaultValue: 'http://127.0.0.1:8000',
