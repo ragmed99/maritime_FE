@@ -93,13 +93,16 @@ class ShipsRepository {
     (await _api.get<Map<String, dynamic>>('trips/$tripId/financials/')).data!,
   );
 
-  Future<Uint8List> tripDetailsPdf(String tripId, String language) async =>
-      Uint8List.fromList(
-        await _api.download(
-          'trips/$tripId/details/pdf/',
-          query: {'lang': language},
-        ),
-      );
+  Future<Uint8List> tripDetailsPdf(
+    String tripId,
+    String language, {
+    String? clientId,
+  }) async => Uint8List.fromList(
+    await _api.download(
+      'trips/$tripId/details/pdf/',
+      query: {'lang': language, 'client': ?clientId},
+    ),
+  );
 
   Future<void> saveShip({
     String? id,

@@ -109,6 +109,7 @@ class TripTransaction {
     required this.description,
     this.quantity,
     this.unitPrice,
+    this.clientId,
     this.clientName,
   });
   factory TripTransaction.fromJson(
@@ -124,6 +125,7 @@ class TripTransaction {
     unitPrice: json['unit_price'] == null
         ? null
         : moneyFromJson(json['unit_price']),
+    clientId: json['client'] as String?,
     clientName: clientName,
   );
   final String id;
@@ -133,6 +135,7 @@ class TripTransaction {
   final String description;
   final double? quantity;
   final double? unitPrice;
+  final String? clientId;
   final String? clientName;
 }
 

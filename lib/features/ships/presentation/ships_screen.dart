@@ -643,6 +643,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   List<TripTransaction> transactions = [];
   List<ClientOption> clients = [];
   Financials? financials;
+  String? clientFilter;
   bool sharingPdf = false;
   bool loading = true;
   bool failed = false;
@@ -666,15 +667,24 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       transactions = values[0] as List<TripTransaction>;
       clients = values[1] as List<ClientOption>;
       financials = values[2] as Financials;
+      if (!_tripClients.containsKey(clientFilter)) clientFilter = null;
     } catch (_) {
       failed = true;
     }
     if (mounted) setState(() => loading = false);
   }
 
+  /// Clients who bought something on this trip, keyed by id.
+  Map<String, String> get _tripClients => {
+    for (final row in transactions)
+      if (row.type == 'CLIENT_PURCHASE' && row.clientId != null)
+        row.clientId!: row.clientName ?? '—',
+  };
+
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
+    final tripClients = _tripClients;
     return Scaffold(
       appBar: AppBar(
         title: Text(s.tripDetails),
@@ -711,6 +721,32 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         icon: const Icon(Icons.shopping_cart_outlined),
                         label: Text(s.addClientPurchase),
                       ),
+                      PopupMenuButton<String>(
+                        tooltip: s.client,
+                        initialValue: clientFilter ?? '',
+                        onSelected: (value) => setState(
+                          () => clientFilter = value.isEmpty ? null : value,
+                        ),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(value: '', child: Text(s.all)),
+                          for (final entry in tripClients.entries)
+                            PopupMenuItem(
+                              value: entry.key,
+                              child: Text(entry.value),
+                            ),
+                        ],
+                        child: IgnorePointer(
+                          child: FilledButton.tonalIcon(
+                            onPressed: () {},
+                            icon: const Icon(Icons.filter_list),
+                            label: Text(
+                              clientFilter == null
+                                  ? '${s.client}: ${s.all}'
+                                  : tripClients[clientFilter]!,
+                            ),
+                          ),
+                        ),
+                      ),
                       FilledButton.tonalIcon(
                         onPressed: sharingPdf ? null : _sharePdf,
                         icon: sharingPdf
@@ -729,7 +765,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   _TripLedgerSheet(
                     shipName: widget.shipName,
                     date: widget.trip.departureDate,
-                    transactions: transactions,
+                    transactions: clientFilter == null
+                        ? transactions
+                        : transactions
+                              .where((row) => row.clientId == clientFilter)
+                              .toList(),
                     onSetUnitPrice: _setUnitPrice,
                     onEdit: _editTransaction,
                     onDelete: _deleteTransaction,
@@ -777,11 +817,15 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       final bytes = await widget.repository.tripDetailsPdf(
         widget.trip.id,
         language,
+        clientId: clientFilter,
       );
+      final clientSuffix = clientFilter == null
+          ? ''
+          : '-${_tripClients[clientFilter]}';
       final savedPath = await exportPdf(
         bytes: bytes,
         filename:
-            '${widget.shipName}-${DateFormat('yyyy-MM-dd').format(widget.trip.departureDate)}.pdf',
+            '${widget.shipName}-${DateFormat('yyyy-MM-dd').format(widget.trip.departureDate)}$clientSuffix.pdf',
         title: widget.shipName,
       );
       if (mounted && savedPath != null) {
