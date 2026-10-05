@@ -37,6 +37,7 @@ class AdministrationRepository {
 
   Future<void> setActive(int id, bool active) =>
       _api.patch('users/$id/status/', data: {'is_active': active});
+  Future<void> deleteUser(int id) => _api.delete('users/$id/');
   Future<void> resetPassword(int id, String password) =>
       _api.post('users/$id/reset-password/', data: {'new_password': password});
   Future<void> changePassword(String current, String password) => _api.post(

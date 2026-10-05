@@ -1096,7 +1096,7 @@ class _TripLedgerSheet extends StatelessWidget {
               ),
               ...group.value.map(
                 (row) => Card(
-                  color: row.unitPrice == null ? _pendingPriceColor : color,
+                  color: row.needsUnitPrice ? _pendingPriceColor : color,
                   margin: const EdgeInsets.only(bottom: 8),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -1126,14 +1126,14 @@ class _TripLedgerSheet extends StatelessWidget {
                             Text(
                               '${s.quantity}: ${_number(row.quantity ?? 0)}',
                             ),
-                            row.unitPrice == null
+                            row.needsUnitPrice
                                 ? TextButton.icon(
                                     onPressed: () => onSetUnitPrice(row),
                                     icon: const Icon(Icons.edit, size: 16),
                                     label: Text(s.unitPrice),
                                   )
                                 : Text(
-                                    '${s.unitPrice}: ${_number(row.unitPrice!)}',
+                                    '${s.unitPrice}: ${row.unitPrice == null ? '—' : _number(row.unitPrice!)}',
                                   ),
                             Text('${s.amount}: ${_number(row.amount)}'),
                           ],
@@ -1232,7 +1232,7 @@ class _TripLedgerSheet extends StatelessWidget {
                                         ],
                                       ),
                                       _cell(_number(row.quantity ?? 0)),
-                                      row.unitPrice == null
+                                      row.needsUnitPrice
                                           ? TextButton.icon(
                                               onPressed: () =>
                                                   onSetUnitPrice(row),
@@ -1242,13 +1242,17 @@ class _TripLedgerSheet extends StatelessWidget {
                                               ),
                                               label: Text(s.unitPrice),
                                             )
-                                          : _cell(_number(row.unitPrice!)),
+                                          : _cell(
+                                              row.unitPrice == null
+                                                  ? '—'
+                                                  : _number(row.unitPrice!),
+                                            ),
                                       _cell(
                                         _number(row.amount),
                                         align: TextAlign.end,
                                       ),
                                     ],
-                                    color: row.unitPrice == null
+                                    color: row.needsUnitPrice
                                         ? _pendingPriceColor
                                         : color,
                                   ),

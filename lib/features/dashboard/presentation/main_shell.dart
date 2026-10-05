@@ -240,6 +240,7 @@ class _MainShellState extends State<MainShell> {
       AdministrationScreen(
         repository: widget.administrationRepository,
         isAdmin: widget.authController.currentUser?.isStaff == true,
+        currentUserId: widget.authController.currentUser?.id,
       ),
       SettingsScreen(
         controller: widget.localeController,

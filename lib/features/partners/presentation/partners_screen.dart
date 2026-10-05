@@ -13,7 +13,6 @@ import '../../../core/widgets/home_button.dart';
 import '../../../core/widgets/list_header_bar.dart';
 import '../../../core/widgets/money_text.dart';
 import '../../../core/widgets/section_header.dart';
-import '../../../core/widgets/status_pill.dart';
 import '../../../core/widgets/transaction_row_actions.dart'
     show TransactionRowActions, confirmLinkedTransactionChange;
 import '../application/partners_controller.dart';
@@ -589,37 +588,11 @@ class PartnerBalance extends StatelessWidget {
         : value.weOweThem > 0
         ? money.positive
         : money.neutral;
-    final label = value.theyOweUs > 0
-        ? _partnerText(context, 'Débit', 'مدين')
-        : value.weOweThem > 0
-        ? _partnerText(context, 'Crédit', 'دائن')
-        : s.balanced;
     return SizedBox(
       width: 280,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            children: [
-              Text('${_partnerText(context, 'Débit', 'مدين')}: '),
-              MoneyText(
-                value.theyOweUs,
-                locale: locale,
-                style: TextStyle(color: money.negative),
-              ),
-            ],
-          ),
-          Wrap(
-            children: [
-              Text('${_partnerText(context, 'Crédit', 'دائن')}: '),
-              MoneyText(
-                value.weOweThem,
-                locale: locale,
-                style: TextStyle(color: money.positive),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
           Text(s.currentBalance),
           MoneyText(
             value.balance.abs(),
@@ -629,8 +602,6 @@ class PartnerBalance extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
-          StatusPill(label, color: color),
         ],
       ),
     );

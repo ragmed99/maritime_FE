@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/models/account_position.dart';
@@ -601,9 +602,22 @@ class _ClientStatementSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
-    final purchases =
-        rows.where((row) => row.type == 'CLIENT_PURCHASE').toList()
-          ..sort((a, b) => (a.ship ?? '').compareTo(b.ship ?? ''));
+    final dateFormat = DateFormat.yMd(
+      Localizations.localeOf(context).toLanguageTag(),
+    );
+    // Same as the PDF: one line per ship and date with the purchase total,
+    // not every individual item.
+    final groups = <String, _PurchaseGroup>{};
+    for (final row in rows.where((row) => row.type == 'CLIENT_PURCHASE')) {
+      final ship = row.ship ?? '—';
+      final day = DateTime(row.date.year, row.date.month, row.date.day);
+      groups
+              .putIfAbsent('$ship|$day', () => _PurchaseGroup(ship, day))
+              .amount +=
+          row.amount;
+    }
+    final purchases = groups.values.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
     final payments = rows.where((row) => row.type == 'CLIENT_PAYMENT').toList()
       ..sort((a, b) => a.date.compareTo(b.date));
     final totalPurchases = purchases.fold<double>(
@@ -627,8 +641,10 @@ class _ClientStatementSheet extends StatelessWidget {
             (row) => Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                title: Text(row.ship ?? '—'),
-                subtitle: Text(s.purchases),
+                title: Text(row.ship),
+                subtitle: Text(
+                  '${s.purchases} • ${dateFormat.format(row.date)}',
+                ),
                 trailing: Text(
                   _number(row.amount),
                   style: const TextStyle(fontWeight: FontWeight.w700),
@@ -687,7 +703,7 @@ class _ClientStatementSheet extends StatelessWidget {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
-            width: 630,
+            width: 820,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -695,13 +711,15 @@ class _ClientStatementSheet extends StatelessWidget {
                   border: border,
                   columnWidths: const {
                     0: FixedColumnWidth(210),
-                    1: FixedColumnWidth(210),
+                    1: FixedColumnWidth(190),
                     2: FixedColumnWidth(210),
+                    3: FixedColumnWidth(210),
                   },
                   children: [
                     TableRow(
                       children: [
                         _cell(s.shipName, bold: true, align: TextAlign.center),
+                        _cell(s.date, bold: true, align: TextAlign.center),
                         _cell(s.purchases, bold: true, align: TextAlign.center),
                         _cell(s.payments, bold: true, align: TextAlign.center),
                       ],
@@ -712,9 +730,15 @@ class _ClientStatementSheet extends StatelessWidget {
                         children: [
                           _cell(
                             index < purchases.length
-                                ? purchases[index].ship ?? '—'
+                                ? purchases[index].ship
                                 : '',
                             bold: index < purchases.length,
+                            align: TextAlign.center,
+                          ),
+                          _cell(
+                            index < purchases.length
+                                ? dateFormat.format(purchases[index].date)
+                                : '',
                             align: TextAlign.center,
                           ),
                           index < purchases.length
@@ -750,6 +774,7 @@ class _ClientStatementSheet extends StatelessWidget {
                       decoration: const BoxDecoration(color: Color(0xFF12DDE4)),
                       children: [
                         _cell(s.total, bold: true, align: TextAlign.center),
+                        _cell(''),
                         _cell(
                           _number(totalPurchases),
                           bold: true,
@@ -766,6 +791,7 @@ class _ClientStatementSheet extends StatelessWidget {
                       decoration: const BoxDecoration(color: Color(0xFFFF9800)),
                       children: [
                         _cell(s.remaining, bold: true, align: TextAlign.center),
+                        _cell(''),
                         _cell(
                           _number(remaining),
                           bold: true,
@@ -783,6 +809,13 @@ class _ClientStatementSheet extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PurchaseGroup {
+  _PurchaseGroup(this.ship, this.date);
+  final String ship;
+  final DateTime date;
+  double amount = 0;
 }
 
 class _ClientInput {

@@ -137,6 +137,9 @@ class TripTransaction {
   final double? unitPrice;
   final String? clientId;
   final String? clientName;
+
+  /// A pointeur purchase (quantity set) still waiting for its unit price.
+  bool get needsUnitPrice => quantity != null && unitPrice == null;
 }
 
 class ClientOption {

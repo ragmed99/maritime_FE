@@ -17,10 +17,12 @@ class AdministrationScreen extends StatelessWidget {
   const AdministrationScreen({
     required this.repository,
     required this.isAdmin,
+    this.currentUserId,
     super.key,
   });
   final AdministrationRepository repository;
   final bool isAdmin;
+  final int? currentUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +46,10 @@ class AdministrationScreen extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => UsersScreen(repository: repository),
+                    builder: (_) => UsersScreen(
+                      repository: repository,
+                      currentUserId: currentUserId,
+                    ),
                   ),
                 ),
               ),
@@ -122,8 +127,9 @@ class _AdminCard extends StatelessWidget {
 }
 
 class UsersScreen extends StatefulWidget {
-  const UsersScreen({required this.repository, super.key});
+  const UsersScreen({required this.repository, this.currentUserId, super.key});
   final AdministrationRepository repository;
+  final int? currentUserId;
   @override
   State<UsersScreen> createState() => _UsersScreenState();
 }
@@ -231,6 +237,10 @@ class _UsersScreenState extends State<UsersScreen> {
                                           user: user,
                                           onStatus: () => _status(user),
                                           onPassword: () => _password(user),
+                                          onDelete:
+                                              user.id == widget.currentUserId
+                                              ? null
+                                              : () => _delete(user),
                                         ),
                                       ),
                                     ],
@@ -284,6 +294,9 @@ class _UsersScreenState extends State<UsersScreen> {
                                   user: user,
                                   onStatus: () => _status(user),
                                   onPassword: () => _password(user),
+                                  onDelete: user.id == widget.currentUserId
+                                      ? null
+                                      : () => _delete(user),
                                 ),
                               ),
                             ),
@@ -340,6 +353,35 @@ class _UsersScreenState extends State<UsersScreen> {
     }
   }
 
+  Future<void> _delete(ManagedUser user) async {
+    final s = AppLocalizations.of(context);
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (_) => AppDialogShell(
+        title: '${s.delete} ${user.username}',
+        icon: Icons.delete_outline,
+        content: Text(s.deleteConfirmation),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(s.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(s.delete),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      await widget.repository.deleteUser(user.id);
+      await _load();
+    } catch (_) {
+      if (mounted) _message(s.userSaveError);
+    }
+  }
+
   void _message(String text) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 }
@@ -349,21 +391,35 @@ class _UserActions extends StatelessWidget {
     required this.user,
     required this.onStatus,
     required this.onPassword,
+    this.onDelete,
   });
   final ManagedUser user;
   final VoidCallback onStatus;
   final VoidCallback onPassword;
+  final VoidCallback? onDelete;
   @override
   Widget build(BuildContext context) {
     final s = AppLocalizations.of(context);
     return PopupMenuButton<String>(
-      onSelected: (value) => value == 'status' ? onStatus() : onPassword(),
+      onSelected: (value) => switch (value) {
+        'status' => onStatus(),
+        'delete' => onDelete?.call(),
+        _ => onPassword(),
+      },
       itemBuilder: (_) => [
         PopupMenuItem(
           value: 'status',
           child: Text(user.isActive ? s.deactivate : s.activate),
         ),
         PopupMenuItem(value: 'password', child: Text(s.resetPassword)),
+        if (onDelete != null)
+          PopupMenuItem(
+            value: 'delete',
+            child: Text(
+              s.delete,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
       ],
     );
   }

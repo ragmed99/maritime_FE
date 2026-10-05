@@ -399,6 +399,7 @@ class OfflineStore {
       final unpriced = rows.any(
         (row) =>
             row['transaction_type'] == 'CLIENT_PURCHASE' &&
+            row['quantity'] != null &&
             row['unit_price'] == null,
       );
       cache('ships/$id/financials/', {
@@ -429,6 +430,7 @@ class OfflineStore {
         'has_unpriced_purchases': rows.any(
           (row) =>
               row['transaction_type'] == 'CLIENT_PURCHASE' &&
+              row['quantity'] != null &&
               row['unit_price'] == null,
         ),
       });
