@@ -21,10 +21,11 @@ void main() {
       'Statistiques',
       'Historique des transactions',
       'Dettes et prêts',
+      'Corbeille',
     ]) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.byType(Card), findsNWidgets(7));
+    expect(find.byType(Card), findsNWidgets(8));
     expect(find.text('Espèces attendues'), findsNothing);
 
     await tester.tap(find.text('Navires'));

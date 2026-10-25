@@ -14,11 +14,14 @@ void main() {
       name: 'production',
       developmentUrl: 'http://127.0.0.1:8000',
       stagingUrl: '',
-      productionUrl: 'https://maritime-api.cliniquedouane.com',
+      productionUrl: 'https://tarfishing-api.terratechnologie.com',
     );
 
     expect(environment.flavor, AppFlavor.production);
-    expect(environment.apiBaseUrl, 'https://maritime-api.cliniquedouane.com');
+    expect(
+      environment.apiBaseUrl,
+      'https://tarfishing-api.terratechnologie.com',
+    );
   });
 
   test('production rejects non-HTTPS URLs', () {
@@ -27,7 +30,7 @@ void main() {
         name: 'production',
         developmentUrl: 'http://127.0.0.1:8000',
         stagingUrl: '',
-        productionUrl: 'http://maritime-api.cliniquedouane.com',
+        productionUrl: 'http://tarfishing-api.terratechnologie.com',
       ),
       throwsStateError,
     );
@@ -39,7 +42,7 @@ void main() {
         name: 'staging',
         developmentUrl: 'http://127.0.0.1:8000',
         stagingUrl: '',
-        productionUrl: 'https://maritime-api.cliniquedouane.com',
+        productionUrl: 'https://tarfishing-api.terratechnologie.com',
       ),
       throwsStateError,
     );

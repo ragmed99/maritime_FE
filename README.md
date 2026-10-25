@@ -14,7 +14,7 @@ flutter run -d linux
 
 The development URL can still be overridden when needed. Staging requires an
 explicit URL. Production defaults to the deployed Vultr HTTPS API:
-`https://maritime-api.cliniquedouane.com`.
+`https://tarfishing-api.terratechnologie.com`.
 
 ```bash
 flutter run --dart-define=DEV_API_URL=http://10.0.2.2:8000
@@ -55,7 +55,7 @@ production validation requires an absolute HTTPS URL:
 
 ```bash
 flutter build apk --release --dart-define=APP_ENV=production \
-  --dart-define=PRODUCTION_API_URL=https://maritime-api.cliniquedouane.com
+  --dart-define=PRODUCTION_API_URL=https://tarfishing-api.terratechnologie.com
 ```
 
 Use `127.0.0.1` instead of Android emulator host `10.0.2.2` when running the

@@ -24,7 +24,7 @@ class AppEnvironment {
     const staging = String.fromEnvironment('STAGING_API_URL');
     const production = String.fromEnvironment(
       'PRODUCTION_API_URL',
-      defaultValue: 'https://maritime-api.cliniquedouane.com',
+      defaultValue: 'https://tarfishing-api.terratechnologie.com',
     );
     return resolve(
       name: name,

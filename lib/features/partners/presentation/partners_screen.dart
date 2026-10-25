@@ -588,6 +588,11 @@ class PartnerBalance extends StatelessWidget {
         : value.weOweThem > 0
         ? money.positive
         : money.neutral;
+    final direction = value.theyOweUs > 0
+        ? _partnerText(context, 'Débit', 'مدين')
+        : value.weOweThem > 0
+        ? _partnerText(context, 'Crédit', 'دائن')
+        : s.balanced;
     return SizedBox(
       width: 280,
       child: Column(
@@ -602,6 +607,7 @@ class PartnerBalance extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
+          Text(direction, style: TextStyle(color: color)),
         ],
       ),
     );
