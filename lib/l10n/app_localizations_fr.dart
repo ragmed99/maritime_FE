@@ -488,6 +488,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get pdfError => 'Impossible de générer ou partager le relevé PDF.';
 
   @override
+  String get downloadShareExcel => 'Excel / Partager';
+
+  @override
+  String get excelError => 'Impossible de générer ou partager le relevé Excel.';
+
+  @override
   String get saveError => 'Impossible d’enregistrer la transaction.';
 
   @override

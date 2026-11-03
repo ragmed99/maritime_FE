@@ -63,6 +63,10 @@ class ClientsRepository {
         ),
       );
 
+  Future<Uint8List> statementXlsx(String clientId) async => Uint8List.fromList(
+    await _api.download('clients/$clientId/statement/xlsx/'),
+  );
+
   Future<ClientStatementData> statement(
     String clientId,
     ClientFilters filters,

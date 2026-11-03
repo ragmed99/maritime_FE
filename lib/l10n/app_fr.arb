@@ -157,6 +157,8 @@
   "downloadSharePdf": "PDF / Partager",
   "clientStatement": "Relevé client",
   "pdfError": "Impossible de générer ou partager le relevé PDF.",
+  "downloadShareExcel": "Excel / Partager",
+  "excelError": "Impossible de générer ou partager le relevé Excel.",
   "saveError": "Impossible d’enregistrer la transaction.",
   "addPartner": "Ajouter un partenaire",
   "editPartner": "Modifier le partenaire",

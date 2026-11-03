@@ -1040,6 +1040,18 @@ abstract class AppLocalizations {
   /// **'Impossible de générer ou partager le relevé PDF.'**
   String get pdfError;
 
+  /// No description provided for @downloadShareExcel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Excel / Partager'**
+  String get downloadShareExcel;
+
+  /// No description provided for @excelError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de générer ou partager le relevé Excel.'**
+  String get excelError;
+
   /// No description provided for @saveError.
   ///
   /// In fr, this message translates to:

@@ -157,6 +157,8 @@
   "downloadSharePdf": "PDF / مشاركة",
   "clientStatement": "كشف حساب العميل",
   "pdfError": "تعذر إنشاء أو مشاركة كشف PDF.",
+  "downloadShareExcel": "Excel / مشاركة",
+  "excelError": "تعذر إنشاء أو مشاركة كشف Excel.",
   "saveError": "تعذر حفظ المعاملة.",
   "addPartner": "إضافة شريك",
   "editPartner": "تعديل الشريك",

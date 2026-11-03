@@ -481,6 +481,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get pdfError => 'تعذر إنشاء أو مشاركة كشف PDF.';
 
   @override
+  String get downloadShareExcel => 'Excel / مشاركة';
+
+  @override
+  String get excelError => 'تعذر إنشاء أو مشاركة كشف Excel.';
+
+  @override
   String get saveError => 'تعذر حفظ المعاملة.';
 
   @override
