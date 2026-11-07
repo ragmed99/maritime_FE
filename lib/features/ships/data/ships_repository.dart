@@ -104,6 +104,14 @@ class ShipsRepository {
     ),
   );
 
+  Future<Uint8List> tripDetailsXlsx(String tripId, {String? clientId}) async =>
+      Uint8List.fromList(
+        await _api.download(
+          'trips/$tripId/details/xlsx/',
+          query: {'client': ?clientId},
+        ),
+      );
+
   Future<void> saveShip({
     String? id,
     required String name,

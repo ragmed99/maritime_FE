@@ -4,6 +4,7 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/models/account_position.dart';
 import '../../../core/files/pdf_export.dart';
+import '../../../core/widgets/excel_export_button.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_date_field.dart';
 import '../../../core/widgets/app_dialog_shell.dart';
@@ -294,7 +295,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
   Map<String, List<RelationOption>> trips = {};
   ClientFilters filters = const ClientFilters();
   bool sharingPdf = false;
-  bool sharingExcel = false;
   bool loading = true;
   bool failed = false;
   @override
@@ -402,17 +402,11 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                               : const Icon(Icons.picture_as_pdf_outlined),
                           label: Text(s.downloadSharePdf),
                         ),
-                        FilledButton.tonalIcon(
-                          onPressed: sharingExcel ? null : _shareExcel,
-                          icon: sharingExcel
-                              ? const SizedBox.square(
-                                  dimension: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.table_chart_outlined),
-                          label: Text(s.downloadShareExcel),
+                        ExcelExportButton(
+                          download: () =>
+                              widget.repository.statementXlsx(widget.client.id),
+                          filename: 'client-${widget.client.name}.xlsx',
+                          title: widget.client.name,
                         ),
                       ],
                     ),
@@ -548,32 +542,6 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
       }
     } finally {
       if (mounted) setState(() => sharingPdf = false);
-    }
-  }
-
-  Future<void> _shareExcel() async {
-    setState(() => sharingExcel = true);
-    try {
-      final bytes = await widget.repository.statementXlsx(widget.client.id);
-      final savedPath = await exportFile(
-        bytes: bytes,
-        filename: 'client-${widget.client.name}.xlsx',
-        title: widget.client.name,
-        mimeType: xlsxMimeType,
-      );
-      if (mounted && savedPath != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Excel: $savedPath')));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).excelError)),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => sharingExcel = false);
     }
   }
 }

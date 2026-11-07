@@ -3,6 +3,7 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/files/pdf_export.dart';
+import '../../../core/widgets/excel_export_button.dart';
 import '../../../core/models/account_position.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_date_field.dart';
@@ -413,6 +414,15 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
                           label: Text(
                             _partnerText(context, 'Générer PDF', 'إنشاء PDF'),
                           ),
+                        ),
+                        ExcelExportButton(
+                          download: () => widget.repository.statementXlsx(
+                            widget.partner.id,
+                            startDate: startDate,
+                            endDate: endDate,
+                          ),
+                          filename: 'partner-${widget.partner.name}.xlsx',
+                          title: widget.partner.name,
                         ),
                         OutlinedButton.icon(
                           onPressed: _filter,

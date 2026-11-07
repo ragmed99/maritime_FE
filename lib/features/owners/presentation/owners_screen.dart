@@ -3,6 +3,7 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/models/account_position.dart';
 import '../../../core/files/pdf_export.dart';
+import '../../../core/widgets/excel_export_button.dart';
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_date_field.dart';
@@ -408,6 +409,15 @@ class _OwnerDetailsScreenState extends State<OwnerDetailsScreen> {
                                 )
                               : const Icon(Icons.picture_as_pdf_outlined),
                           label: Text(s.downloadSharePdf),
+                        ),
+                        ExcelExportButton(
+                          download: () => widget.repository.statementXlsx(
+                            widget.owner.id,
+                            startDate: startDate,
+                            endDate: endDate,
+                          ),
+                          filename: 'owner-${widget.owner.name}.xlsx',
+                          title: widget.owner.name,
                         ),
                       ],
                     ),

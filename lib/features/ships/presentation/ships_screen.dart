@@ -4,6 +4,7 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/files/pdf_export.dart';
+import '../../../core/widgets/excel_export_button.dart';
 import '../../../core/widgets/app_date_field.dart';
 import '../../../core/widgets/app_dialog_shell.dart';
 import '../../../core/widgets/app_state_view.dart';
@@ -759,6 +760,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                             : const Icon(Icons.picture_as_pdf_outlined),
                         label: Text(s.downloadSharePdf),
                       ),
+                      ExcelExportButton(
+                        download: () => widget.repository.tripDetailsXlsx(
+                          widget.trip.id,
+                          clientId: clientFilter,
+                        ),
+                        filename: '${_tripFileName()}.xlsx',
+                        title: widget.shipName,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 18),
@@ -810,6 +819,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     await _load();
   }
 
+  String _tripFileName() {
+    final clientSuffix = clientFilter == null
+        ? ''
+        : '-${_tripClients[clientFilter]}';
+    return '${widget.shipName}-${DateFormat('yyyy-MM-dd').format(widget.trip.departureDate)}$clientSuffix';
+  }
+
   Future<void> _sharePdf() async {
     setState(() => sharingPdf = true);
     try {
@@ -819,13 +835,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         language,
         clientId: clientFilter,
       );
-      final clientSuffix = clientFilter == null
-          ? ''
-          : '-${_tripClients[clientFilter]}';
       final savedPath = await exportPdf(
         bytes: bytes,
-        filename:
-            '${widget.shipName}-${DateFormat('yyyy-MM-dd').format(widget.trip.departureDate)}$clientSuffix.pdf',
+        filename: '${_tripFileName()}.pdf',
         title: widget.shipName,
       );
       if (mounted && savedPath != null) {

@@ -63,6 +63,13 @@ class ReportsRepository {
     ),
   );
 
+  Future<Uint8List> xlsx(StatementRequest request) async => Uint8List.fromList(
+    await _api.download(
+      '${request.resource}/${request.entityId}/statement/xlsx/',
+      query: request.query,
+    ),
+  );
+
   Future<DashboardMetrics> summary(DateTime start, DateTime end) async =>
       DashboardMetrics.fromJson(
         (await _api.get<Map<String, dynamic>>(

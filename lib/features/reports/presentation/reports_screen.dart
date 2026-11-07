@@ -4,6 +4,7 @@ import 'package:maritime_frontend/l10n/app_localizations.dart';
 
 import '../../../core/formatters/money_formatter.dart';
 import '../../../core/files/pdf_export.dart';
+import '../../../core/widgets/excel_export_button.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_date_field.dart';
 import '../../../core/widgets/app_state_view.dart';
@@ -463,14 +464,15 @@ class _StatementPreviewScreenState extends State<StatementPreviewScreen> {
               builder: (context, constraints) => ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  Row(
+                  Text(
+                    data!.subjectName,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Expanded(
-                        child: Text(
-                          data!.subjectName,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                      ),
                       FilledButton.icon(
                         onPressed: sharing ? null : _share,
                         icon: sharing
@@ -482,6 +484,11 @@ class _StatementPreviewScreenState extends State<StatementPreviewScreen> {
                               )
                             : const Icon(Icons.picture_as_pdf_outlined),
                         label: Text(s.downloadSharePdf),
+                      ),
+                      ExcelExportButton(
+                        download: () => widget.repository.xlsx(widget.request),
+                        filename: 'statement.xlsx',
+                        title: s.reportPreview,
                       ),
                     ],
                   ),

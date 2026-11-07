@@ -49,9 +49,20 @@ class PartnersRepository {
     String id, {
     DateTime? startDate,
     DateTime? endDate,
-  }) async => Uint8List.fromList(
+  }) => _statementFile(id, 'pdf', startDate, endDate);
+  Future<Uint8List> statementXlsx(
+    String id, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) => _statementFile(id, 'xlsx', startDate, endDate);
+  Future<Uint8List> _statementFile(
+    String id,
+    String format,
+    DateTime? startDate,
+    DateTime? endDate,
+  ) async => Uint8List.fromList(
     await _api.download(
-      'partners/$id/statement/pdf/',
+      'partners/$id/statement/$format/',
       query: {
         if (startDate != null)
           'start_date': startDate.toIso8601String().split('T').first,
